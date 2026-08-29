@@ -1,0 +1,57 @@
+# Environment & VirtualEnv
+.env
+venv/
+ENV/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Pretrained Model Weights & Engine Exports
+*.pt
+*.pth
+*.onnx
+*.engine
+*.tflite
+*.ncnn*
+
+# Media & Evidence
+evidence_storage/*
+!evidence_storage/.gitkeep
+test_inputs/*
+!test_inputs/.gitkeep
+test_outputs/*
+!test_outputs/.gitkeep
+tests/test_evidence/*
+!tests/test_evidence/.gitkeep
+
+# All raw media formats
+*.jpg
+*.jpeg
+*.png
+*.bmp
+*.webp
+*.mp4
+*.avi
+*.mov
+*.mkv
+
+# Application Logs
+logs/*
+!logs/.gitkeep
+*.log
+
+# IDE & OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.vscode/
+.idea/
