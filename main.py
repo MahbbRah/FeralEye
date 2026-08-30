@@ -1,10 +1,14 @@
-"""Main Application Service for Predator & Cat Detection System."""
-
 import time
 import signal
 import sys
-import psutil
 from typing import List
+
+try:
+    import psutil
+    has_psutil = True
+except ImportError:
+    psutil = None
+    has_psutil = False
 
 from config import config
 from utils.logger import setup_logger
@@ -177,7 +181,7 @@ def main():
     last_metrics_log_time = time.time()
     frames_processed_count = 0
     total_inference_time_ms = 0.0
-    process_handle = psutil.Process()
+    process_handle = psutil.Process() if has_psutil else None
 
     logger.info("Entering main detection loop...")
 
@@ -225,8 +229,8 @@ def main():
                 elapsed_sec = now_sec - last_metrics_log_time
                 achieved_fps = frames_processed_count / elapsed_sec if elapsed_sec > 0 else 0.0
                 avg_latency = total_inference_time_ms / frames_processed_count if frames_processed_count > 0 else 0.0
-                mem_mb = process_handle.memory_info().rss / (1024 * 1024)
-                cpu_pct = process_handle.cpu_percent()
+                mem_mb = (process_handle.memory_info().rss / (1024 * 1024)) if process_handle else 0.0
+                cpu_pct = process_handle.cpu_percent() if process_handle else 0.0
 
                 logger.info(
                     f"[Telemetry] Status: {state_engine.current_state.value} | "
