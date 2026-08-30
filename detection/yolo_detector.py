@@ -47,11 +47,20 @@ class YOLODetector:
         logger.info(f"Mapped target classes {self.target_classes} -> COCO class IDs: {self.target_class_ids}")
 
     def _select_device(self) -> str:
-        """Selects the best available hardware acceleration device."""
+        """Selects the best available hardware acceleration device and optimizes CPU threads."""
         if torch.cuda.is_available():
             return "cuda"
         elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
             return "mps"
+        
+        # On multi-core mobile CPUs (Android / ARM), utilize all cores
+        try:
+            num_cores = os.cpu_count() or 4
+            torch.set_num_threads(max(1, min(num_cores, 4)))
+            logger.info(f"Configured PyTorch CPU with {torch.get_num_threads()} worker threads.")
+        except Exception:
+            pass
+
         return "cpu"
 
     def detect(self, frame: np.ndarray) -> FrameDetectionResult:
