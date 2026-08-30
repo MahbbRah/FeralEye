@@ -1,91 +1,135 @@
-"""Central Configuration Module for Predator & Cat Detection System."""
+"""Central Configuration Module for Predator & Cat Detection System.
 
-from typing import List, Optional
+Pure Python implementation without C/Rust dependencies (like Pydantic/Maturin)
+for seamless cross-platform execution on Android/Termux, Linux, and macOS.
+"""
+
+import os
+import json
 from pathlib import Path
-from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from dataclasses import dataclass, field
+from typing import List, Optional
+from dotenv import load_dotenv
+
+# Load .env file
+load_dotenv()
 
 
-class AppConfig(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore"
-    )
+def _get_bool(key: str, default: bool) -> bool:
+    val = os.getenv(key)
+    if val is None:
+        return default
+    return val.strip().lower() in ("true", "1", "yes", "on")
 
+
+def _get_float(key: str, default: float) -> float:
+    val = os.getenv(key)
+    if val is None:
+        return default
+    try:
+        return float(val.strip())
+    except ValueError:
+        return default
+
+
+def _get_int(key: str, default: int) -> int:
+    val = os.getenv(key)
+    if val is None:
+        return default
+    try:
+        return int(val.strip())
+    except ValueError:
+        return default
+
+
+def _get_list(key: str, default: List[str]) -> List[str]:
+    val = os.getenv(key)
+    if val is None:
+        return default
+    val = val.strip()
+    if val.startswith("[") and val.endswith("]"):
+        try:
+            parsed = json.loads(val)
+            if isinstance(parsed, list):
+                return [str(x).strip() for x in parsed]
+        except Exception:
+            pass
+    # Fallback to comma-separated
+    return [x.strip() for x in val.split(",") if x.strip()]
+
+
+@dataclass
+class AppConfig:
     # General metadata
-    CAMERA_NAME: str = Field(default="Poultry Pen", description="Friendly name of monitored location")
+    CAMERA_NAME: str = os.getenv("CAMERA_NAME", "Poultry Pen")
 
     # Camera settings
-    CAMERA_RTSP_URL: str = Field(
-        default="rtsp://192.168.1.233/live/ch00_0",
-        description="Full RTSP URL of the IP camera stream"
-    )
-    STREAM_BACKEND: str = Field(default="opencv", description="Stream backend: 'opencv' or 'ffmpeg'")
-    CAMERA_CONNECT_TIMEOUT_SEC: float = Field(default=10.0, description="RTSP connect timeout in seconds")
-    CAMERA_RECONNECT_INITIAL_DELAY_SEC: float = Field(default=2.0, description="Initial reconnect backoff delay")
-    CAMERA_RECONNECT_MAX_DELAY_SEC: float = Field(default=30.0, description="Max reconnect backoff delay")
+    CAMERA_RTSP_URL: str = os.getenv("CAMERA_RTSP_URL", "rtsp://192.168.1.233/live/ch00_0")
+    STREAM_BACKEND: str = os.getenv("STREAM_BACKEND", "opencv")
+    CAMERA_CONNECT_TIMEOUT_SEC: float = _get_float("CAMERA_CONNECT_TIMEOUT_SEC", 10.0)
+    CAMERA_RECONNECT_INITIAL_DELAY_SEC: float = _get_float("CAMERA_RECONNECT_INITIAL_DELAY_SEC", 2.0)
+    CAMERA_RECONNECT_MAX_DELAY_SEC: float = _get_float("CAMERA_RECONNECT_MAX_DELAY_SEC", 30.0)
 
     # Detection & AI settings
-    DETECTION_FPS: float = Field(default=1.0, description="Number of frames per second to sample for AI detection")
-    MODEL_NAME: str = Field(default="yolo11s.pt", description="YOLO model path or name")
-    TARGET_CLASSES: List[str] = Field(default=["cat", "dog"], description="List of target classes to monitor")
-    CONFIDENCE_THRESHOLD: float = Field(default=0.25, description="Minimum detection confidence score (0.0 to 1.0)")
-    INFERENCE_IMAGE_SIZE: int = Field(default=640, description="YOLO inference image size (640 is standard)")
+    DETECTION_FPS: float = _get_float("DETECTION_FPS", 1.0)
+    MODEL_NAME: str = os.getenv("MODEL_NAME", "yolo11s.pt")
+    TARGET_CLASSES: List[str] = field(default_factory=lambda: _get_list("TARGET_CLASSES", ["cat", "dog"]))
+    CONFIDENCE_THRESHOLD: float = _get_float("CONFIDENCE_THRESHOLD", 0.25)
+    INFERENCE_IMAGE_SIZE: int = _get_int("INFERENCE_IMAGE_SIZE", 640)
 
     # Motion Filtering (Optional pre-filter)
-    ENABLE_MOTION_FILTER: bool = Field(default=False, description="Enable cheap motion filtering before AI inference")
-    MOTION_MIN_AREA: int = Field(default=500, description="Minimum contour area in pixels to register motion")
-    MOTION_THRESHOLD: int = Field(default=25, description="Pixel intensity delta threshold for motion")
+    ENABLE_MOTION_FILTER: bool = _get_bool("ENABLE_MOTION_FILTER", False)
+    MOTION_MIN_AREA: int = _get_int("MOTION_MIN_AREA", 500)
+    MOTION_THRESHOLD: int = _get_int("MOTION_THRESHOLD", 25)
 
     # Confirmation & Cooldown state machine
-    CONFIRMATION_COUNT: int = Field(default=2, description="Consecutive or window detections required to trigger alert")
-    CONFIRMATION_WINDOW_SEC: float = Field(default=4.0, description="Sliding window time in seconds for confirmation")
-    ALERT_COOLDOWN_SEC: float = Field(default=180.0, description="Cooldown period after confirmed alert before new alerts")
+    CONFIRMATION_COUNT: int = _get_int("CONFIRMATION_COUNT", 2)
+    CONFIRMATION_WINDOW_SEC: float = _get_float("CONFIRMATION_WINDOW_SEC", 4.0)
+    ALERT_COOLDOWN_SEC: float = _get_float("ALERT_COOLDOWN_SEC", 180.0)
 
     # Evidence Storage
-    EVIDENCE_DIRECTORY: Path = Field(default=Path("./evidence_storage"), description="Directory to store evidence photos")
-    SAVE_ANNOTATED_IMAGE: bool = Field(default=True, description="Save frame with bounding boxes and timestamps")
-    SAVE_RAW_IMAGE: bool = Field(default=False, description="Save unmodified raw frame")
+    EVIDENCE_DIRECTORY: Path = field(default_factory=lambda: Path(os.getenv("EVIDENCE_DIRECTORY", "./evidence_storage")))
+    SAVE_ANNOTATED_IMAGE: bool = _get_bool("SAVE_ANNOTATED_IMAGE", True)
+    SAVE_RAW_IMAGE: bool = _get_bool("SAVE_RAW_IMAGE", False)
 
     # --- ALERT INTEGRATIONS ---
     # Telegram Bot
-    TELEGRAM_ENABLED: bool = Field(default=False, description="Enable Telegram bot photo alerts")
-    TELEGRAM_BOT_TOKEN: str = Field(default="", description="Telegram Bot API Token (from @BotFather)")
-    TELEGRAM_CHAT_ID: str = Field(default="", description="Telegram Chat ID or Group ID")
-    TELEGRAM_PROXY_URL: Optional[str] = Field(default=None, description="Optional HTTP/SOCKS5 proxy (e.g. http://127.0.0.1:7890)")
+    TELEGRAM_ENABLED: bool = _get_bool("TELEGRAM_ENABLED", False)
+    TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    TELEGRAM_CHAT_ID: str = os.getenv("TELEGRAM_CHAT_ID", "")
+    TELEGRAM_PROXY_URL: Optional[str] = os.getenv("TELEGRAM_PROXY_URL", None)
 
     # Ntfy.sh (Instant Push Alarms)
-    NTFY_ENABLED: bool = Field(default=False, description="Enable Ntfy smartphone push alerts")
-    NTFY_TOPIC: str = Field(default="", description="Ntfy topic name (e.g. my_predator_guard_123)")
-    NTFY_SERVER_URL: str = Field(default="https://ntfy.sh", description="Ntfy server URL")
-    NTFY_PRIORITY: str = Field(default="urgent", description="Ntfy priority: min, low, default, high, urgent")
+    NTFY_ENABLED: bool = _get_bool("NTFY_ENABLED", True)
+    NTFY_TOPIC: str = os.getenv("NTFY_TOPIC", "Predator_alert_fast")
+    NTFY_SERVER_URL: str = os.getenv("NTFY_SERVER_URL", "https://ntfy.sh")
+    NTFY_PRIORITY: str = os.getenv("NTFY_PRIORITY", "urgent")
 
     # Discord Webhook
-    DISCORD_ENABLED: bool = Field(default=False, description="Enable Discord Webhook notifications")
-    DISCORD_WEBHOOK_URL: str = Field(default="", description="Discord channel webhook URL")
+    DISCORD_ENABLED: bool = _get_bool("DISCORD_ENABLED", False)
+    DISCORD_WEBHOOK_URL: str = os.getenv("DISCORD_WEBHOOK_URL", "")
 
     # SMTP Email
-    EMAIL_ENABLED: bool = Field(default=False, description="Enable SMTP email alerts with photo attachment")
-    SMTP_SERVER: str = Field(default="smtp.gmail.com", description="SMTP server address")
-    SMTP_PORT: int = Field(default=587, description="SMTP port (587 for TLS, 465 for SSL)")
-    EMAIL_SENDER: str = Field(default="", description="Sender email address")
-    EMAIL_PASSWORD: str = Field(default="", description="Sender email password / App password")
-    EMAIL_RECIPIENTS: List[str] = Field(default=[], description="List of recipient email addresses")
-    EMAIL_USE_TLS: bool = Field(default=True, description="Use STARTTLS (True) or SSL (False)")
+    EMAIL_ENABLED: bool = _get_bool("EMAIL_ENABLED", False)
+    SMTP_SERVER: str = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+    SMTP_PORT: int = _get_int("SMTP_PORT", 587)
+    EMAIL_SENDER: str = os.getenv("EMAIL_SENDER", "")
+    EMAIL_PASSWORD: str = os.getenv("EMAIL_PASSWORD", "")
+    EMAIL_RECIPIENTS: List[str] = field(default_factory=lambda: _get_list("EMAIL_RECIPIENTS", []))
+    EMAIL_USE_TLS: bool = _get_bool("EMAIL_USE_TLS", True)
 
     # Generic Webhook (Home Assistant / MQTT bridge)
-    WEBHOOK_ENABLED: bool = Field(default=False, description="Enable generic JSON webhook POST")
-    WEBHOOK_URL: str = Field(default="", description="Destination webhook URL")
+    WEBHOOK_ENABLED: bool = _get_bool("WEBHOOK_ENABLED", False)
+    WEBHOOK_URL: str = os.getenv("WEBHOOK_URL", "")
 
     # Local Audio Alarm
-    AUDIO_ALARM_ENABLED: bool = Field(default=False, description="Enable local speaker alarm/deterrent sound")
-    AUDIO_ALARM_FILE: Optional[str] = Field(default=None, description="Path to custom .wav/.mp3 alarm sound file")
+    AUDIO_ALARM_ENABLED: bool = _get_bool("AUDIO_ALARM_ENABLED", False)
+    AUDIO_ALARM_FILE: Optional[str] = os.getenv("AUDIO_ALARM_FILE", None)
 
     # Logging
-    LOG_LEVEL: str = Field(default="INFO", description="Logging level (DEBUG, INFO, WARNING, ERROR)")
-    LOG_FILE: Path = Field(default=Path("./logs/camera_guard.log"), description="File path for application logs")
-    METRICS_LOG_INTERVAL_SEC: float = Field(default=60.0, description="Interval in seconds to report CPU/FPS metrics")
+    LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
+    LOG_FILE: Path = field(default_factory=lambda: Path(os.getenv("LOG_FILE", "./logs/camera_guard.log")))
+    METRICS_LOG_INTERVAL_SEC: float = _get_float("METRICS_LOG_INTERVAL_SEC", 60.0)
 
 
 # Global singleton configuration instance
