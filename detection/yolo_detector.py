@@ -1,10 +1,11 @@
-"""YOLO-based Object Detector for Predator / Cat Detection."""
-
 import time
 import logging
 from typing import List, Optional, Set
 import numpy as np
 import torch
+
+# Ensure Android/Termux compatibility before importing Ultralytics
+import utils.android_patch  # noqa: F401
 from ultralytics import YOLO
 
 from events.models import BoundingBox, Detection, FrameDetectionResult

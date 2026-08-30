@@ -15,6 +15,7 @@ import numpy as np
 # Add project root to sys.path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+import utils.android_patch  # noqa: F401
 from config import config
 from detection.yolo_detector import YOLODetector
 from evidence.storage import EvidenceStorage

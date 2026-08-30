@@ -3,6 +3,8 @@ import signal
 import sys
 from typing import List
 
+import utils.android_patch  # noqa: F401
+
 try:
     import psutil
     has_psutil = True
