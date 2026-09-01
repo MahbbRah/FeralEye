@@ -4,6 +4,14 @@ venv/
 ENV/
 env/
 
+# Credentials & Secrets
+*credentials*.json
+*service_account*.json
+gdrive_credentials.json
+*.pem
+*.key
+*.p12
+
 # Python cache
 __pycache__/
 *.py[cod]
