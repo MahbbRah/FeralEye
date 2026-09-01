@@ -185,6 +185,9 @@ def main():
 
     gdrive_sync = GoogleDriveSync(
         service_account_json_path=config.GDRIVE_SERVICE_ACCOUNT_JSON,
+        oauth_client_id=config.GDRIVE_OAUTH_CLIENT_ID,
+        oauth_client_secret=config.GDRIVE_OAUTH_CLIENT_SECRET,
+        oauth_refresh_token=config.GDRIVE_OAUTH_REFRESH_TOKEN,
         folder_id=config.GDRIVE_FOLDER_ID,
         enabled=config.GDRIVE_SYNC_ENABLED,
         upload_photos=config.GDRIVE_UPLOAD_PHOTOS,

@@ -21,15 +21,14 @@ def test_gdrive(credentials_file: str, folder_id: str):
     print(" ☁️  Google Drive Cloud Sync Diagnostics")
     print("=" * 60)
     print(f"Credentials File : {credentials_file}")
+    print(f"OAuth Configured : {'Yes' if config.GDRIVE_OAUTH_REFRESH_TOKEN else 'No'}")
     print(f"Target Folder ID : {folder_id or '(Root / None)'}")
-
-    if not Path(credentials_file).exists():
-        print(f"\n❌ Error: Credentials file '{credentials_file}' does not exist!")
-        print("Please follow the setup instructions in README.md to generate your Google Service Account JSON key.")
-        return False
 
     sync = GoogleDriveSync(
         service_account_json_path=credentials_file,
+        oauth_client_id=config.GDRIVE_OAUTH_CLIENT_ID,
+        oauth_client_secret=config.GDRIVE_OAUTH_CLIENT_SECRET,
+        oauth_refresh_token=config.GDRIVE_OAUTH_REFRESH_TOKEN,
         folder_id=folder_id,
         enabled=True,
         upload_photos=True,
@@ -39,7 +38,7 @@ def test_gdrive(credentials_file: str, folder_id: str):
     print("\n1. Testing OAuth2 Token Acquisition...")
     token = sync._get_valid_token()
     if not token:
-        print("❌ Failed to obtain OAuth2 token. Check service account JSON format and permissions.")
+        print("❌ Failed to obtain OAuth2 token. Check your credentials in .env.")
         return False
     print("✅ Successfully authenticated with Google Drive API!")
 

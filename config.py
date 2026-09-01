@@ -100,6 +100,9 @@ class AppConfig:
     # Google Drive Cloud Sync
     GDRIVE_SYNC_ENABLED: bool = _get_bool("GDRIVE_SYNC_ENABLED", False)
     GDRIVE_SERVICE_ACCOUNT_JSON: Optional[str] = os.getenv("GDRIVE_SERVICE_ACCOUNT_JSON", None)
+    GDRIVE_OAUTH_CLIENT_ID: Optional[str] = os.getenv("GDRIVE_OAUTH_CLIENT_ID", None)
+    GDRIVE_OAUTH_CLIENT_SECRET: Optional[str] = os.getenv("GDRIVE_OAUTH_CLIENT_SECRET", None)
+    GDRIVE_OAUTH_REFRESH_TOKEN: Optional[str] = os.getenv("GDRIVE_OAUTH_REFRESH_TOKEN", None)
     GDRIVE_FOLDER_ID: Optional[str] = os.getenv("GDRIVE_FOLDER_ID", None)
     GDRIVE_UPLOAD_VIDEOS: bool = _get_bool("GDRIVE_UPLOAD_VIDEOS", True)
     GDRIVE_UPLOAD_PHOTOS: bool = _get_bool("GDRIVE_UPLOAD_PHOTOS", True)

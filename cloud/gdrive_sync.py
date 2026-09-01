@@ -20,25 +20,30 @@ class GoogleDriveSync:
     Uploads evidence photos and 20s video clips to Google Drive.
     
     Supports:
-    - Google Cloud Service Account JSON file (recommended for headless servers)
-    - OAuth2 Access / Refresh Token
-    - Dedicated remote folder organization by date (YYYY-MM-DD)
+    - User OAuth2 Credentials (Recommended for personal @gmail.com accounts)
+    - Google Cloud Service Account JSON file (for Google Workspace Shared Drives)
     """
 
     TOKEN_URL = "https://oauth2.googleapis.com/token"
-    DRIVE_UPLOAD_URL = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart"
+    DRIVE_UPLOAD_URL = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true"
     DRIVE_FILES_URL = "https://www.googleapis.com/drive/v3/files"
     SCOPES = "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive"
 
     def __init__(
         self,
         service_account_json_path: Optional[str] = None,
+        oauth_client_id: Optional[str] = None,
+        oauth_client_secret: Optional[str] = None,
+        oauth_refresh_token: Optional[str] = None,
         folder_id: Optional[str] = None,
         enabled: bool = False,
         upload_photos: bool = True,
         upload_videos: bool = True
     ):
         self.service_account_json_path = service_account_json_path
+        self.oauth_client_id = oauth_client_id
+        self.oauth_client_secret = oauth_client_secret
+        self.oauth_refresh_token = oauth_refresh_token
         self.folder_id = folder_id.strip() if folder_id else None
         self.enabled = enabled
         self.upload_photos = upload_photos
@@ -201,13 +206,37 @@ class GoogleDriveSync:
         return parent_id
 
     def _get_valid_token(self) -> Optional[str]:
-        """Obtains or refreshes OAuth2 token using Service Account credentials."""
+        """Obtains or refreshes OAuth2 token using User OAuth or Service Account credentials."""
         with self._lock:
             if self._access_token and time.time() < (self._token_expiry - 60):
                 return self._access_token
 
+            # 1. Option A: Direct User OAuth2 Refresh Token (Uses personal Google Drive quota)
+            if self.oauth_refresh_token and self.oauth_client_id and self.oauth_client_secret:
+                try:
+                    res = requests.post(
+                        self.TOKEN_URL,
+                        data={
+                            "client_id": self.oauth_client_id,
+                            "client_secret": self.oauth_client_secret,
+                            "refresh_token": self.oauth_refresh_token,
+                            "grant_type": "refresh_token"
+                        },
+                        timeout=10.0
+                    )
+                    if res.status_code == 200:
+                        token_data = res.json()
+                        self._access_token = token_data["access_token"]
+                        self._token_expiry = time.time() + token_data.get("expires_in", 3600)
+                        return self._access_token
+                    else:
+                        logger.error(f"Google Drive User OAuth refresh failed: {res.status_code} - {res.text}")
+                except Exception as e:
+                    logger.error(f"Error refreshing Google Drive user OAuth token: {e}")
+
+            # 2. Option B: Service Account JSON
             if not self.service_account_json_path:
-                logger.warning("Google Drive Sync: Missing GDRIVE_SERVICE_ACCOUNT_JSON path.")
+                logger.warning("Google Drive Sync: Missing GDRIVE_SERVICE_ACCOUNT_JSON or GDRIVE_REFRESH_TOKEN.")
                 return None
 
             cred_path = Path(self.service_account_json_path)
