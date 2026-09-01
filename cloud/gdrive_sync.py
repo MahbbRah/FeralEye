@@ -180,26 +180,41 @@ class GoogleDriveSync:
             }
             if parent_id:
                 metadata["parents"] = [parent_id]
+                logger.info(f"☁️ [Google Drive] Uploading '{file_path.name}' into folder ID: '{parent_id}'...")
+            else:
+                logger.warning(f"☁️ [Google Drive] No parent folder ID specified! Uploading to Drive Root.")
 
+            with open(file_path, "rb") as f:
+                file_bytes = f.read()
+
+            boundary = f"=====FeralEyeUploadBoundary{int(time.time()*1000)}====="
             headers = {
                 "Authorization": f"Bearer {token}",
+                "Content-Type": f"multipart/related; boundary={boundary}",
             }
 
-            files = {
-                "data": ("metadata", json.dumps(metadata), "application/json; charset=UTF-8"),
-                "file": (file_path.name, open(file_path, "rb"), mime_type)
-            }
+            metadata_json = json.dumps(metadata)
+            payload = (
+                f"--{boundary}\r\n"
+                f"Content-Type: application/json; charset=UTF-8\r\n\r\n"
+                f"{metadata_json}\r\n"
+                f"--{boundary}\r\n"
+                f"Content-Type: {mime_type}\r\n\r\n"
+            ).encode("utf-8") + file_bytes + f"\r\n--{boundary}--\r\n".encode("utf-8")
 
             response = requests.post(
                 self.DRIVE_UPLOAD_URL,
                 headers=headers,
-                files=files,
+                data=payload,
                 timeout=60.0
             )
 
             if response.status_code in (200, 201):
                 res_data = response.json()
-                return res_data.get("id")
+                file_id = res_data.get("id")
+                parents_res = res_data.get("parents", [])
+                logger.info(f"✅ ☁️ [Google Drive] File uploaded: {file_path.name} (File ID: {file_id}, Parents: {parents_res})")
+                return file_id
             else:
                 logger.error(f"Google Drive upload failed with status {response.status_code}: {response.text}")
                 return None
