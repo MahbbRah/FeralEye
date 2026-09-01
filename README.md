@@ -28,14 +28,14 @@
 
 ```mermaid
 flowchart TD
-    Camera["V380 / ONVIF IP Camera\n(RTSP H.265 Stream)"] --> Reader["Threaded Frame Reader\n(OpenCV Buffer-1 + 10s Circular Ring)"]
+    Camera["V380 / ONVIF IP Camera\n(RTSP H.265 Stream)"] --> Reader["Threaded Frame Reader\n(OpenCV / FFmpeg + Rolling Pre-Buffer)"]
     Reader --> Sampler["1 FPS Rate Limiter"]
     Sampler --> Motion["Optional Motion Pre-Filter"]
     Motion --> YOLO["YOLO11 Object Detector\n(Cat / Dog / Person / Predator)"]
     YOLO --> StateEngine["Confirmation State Engine\n(Sliding Window & Cooldown)"]
     
     StateEngine -- "ALERT CONFIRMED" --> Evidence["Evidence Photo Storage\n(Annotated JPEG)"]
-    StateEngine -- "ALERT CONFIRMED" --> ClipRecorder["20s Video Clip Recorder\n(10s Pre-buffer + 10s Post-buffer MP4)"]
+    StateEngine -- "ALERT CONFIRMED" --> ClipRecorder["Event Video Clip Recorder\n(Pre-Buffer + Post-Buffer, per-class length)"]
     StateEngine -- "ALERT CONFIRMED" --> Dispatcher["Async Alert Dispatcher"]
     
     Dispatcher --> Ntfy["Ntfy Push Alarm"]
@@ -44,9 +44,11 @@ flowchart TD
     Dispatcher --> Email["SMTP Email"]
     Dispatcher --> Audio["Local Speaker Siren"]
     
-    Evidence --> GDrive["Google Drive Cloud Sync\n(Auto-Uploads Photos & 20s Videos)"]
+    Evidence --> GDrive["Google Drive Cloud Sync\n(Auto-Uploads Photos & Clips)"]
     ClipRecorder --> GDrive
     GDrive --> CloudFolder["📁 Google Drive\n/FeralEye-Timestamp-Target/"]
+    Evidence --> LocalRetention["Local Evidence Retention\n(prune > 10 days)"]
+    GDrive --> CloudRetention["Cloud Evidence Retention\n(prune > 60 days)"]
 ```
 
 ---
