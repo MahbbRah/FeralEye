@@ -50,6 +50,10 @@ class FFmpegRTSPStream(BaseStreamReader):
         self._last_retrieved_timestamp: float = 0.0
         # Rolling pre-buffer so event clips can include pre-detection footage.
         self._pre_buffer = deque(maxlen=pre_buffer_max_frames)
+        # stderr must be drained continuously: a full stderr pipe blocks the
+        # ffmpeg process mid-decode, which stalls frames and corrupts the GOP.
+        self._recent_stderr: deque = deque(maxlen=30)
+        self._stderr_thread: Optional[threading.Thread] = None
 
     def start(self) -> None:
         if self._running:
@@ -124,17 +128,20 @@ class FFmpegRTSPStream(BaseStreamReader):
                     bufsize=self.frame_size_bytes * 4
                 )
 
+                self._stderr_thread = threading.Thread(
+                    target=self._drain_stderr, name="FFmpegStderrDrain", daemon=True
+                )
+                self._stderr_thread.start()
+
                 backoff = self.reconnect_initial_delay
 
                 while self._running:
                     # Read exact chunk of bytes for one frame
                     raw_frame = self._proc.stdout.read(self.frame_size_bytes)
                     if not raw_frame or len(raw_frame) != self.frame_size_bytes:
-                        err_output = ""
-                        if self._proc and self._proc.stderr:
-                            err_output = self._proc.stderr.read().decode("utf-8", errors="ignore").strip()
-                        if err_output:
-                            logger.warning(f"FFmpeg error details: {err_output}")
+                        recent_errors = list(self._recent_stderr)
+                        if recent_errors:
+                            logger.warning(f"FFmpeg error details: {' | '.join(recent_errors[-5:])}")
                         else:
                             logger.warning("FFmpeg frame read incomplete or stream ended.")
                         break
@@ -158,11 +165,29 @@ class FFmpegRTSPStream(BaseStreamReader):
                     except Exception:
                         pass
                     self._proc = None
+                if self._stderr_thread and self._stderr_thread.is_alive():
+                    self._stderr_thread.join(timeout=2.0)
+                self._stderr_thread = None
 
             if self._running:
                 logger.info(f"FFmpeg stream disconnected. Retrying in {backoff:.1f}s...")
                 time.sleep(backoff)
                 backoff = min(backoff * 2, self.reconnect_max_delay)
+
+    def _drain_stderr(self) -> None:
+        """Continuously consumes ffmpeg stderr so the pipe never fills and blocks the decoder."""
+        proc = self._proc
+        if proc is None or proc.stderr is None:
+            return
+        try:
+            for raw_line in iter(proc.stderr.readline, b""):
+                line = raw_line.decode("utf-8", errors="ignore").strip()
+                if not line:
+                    continue
+                self._recent_stderr.append(line)
+                logger.debug(f"FFmpeg: {line}")
+        except Exception:
+            pass
 
     @staticmethod
     def _sanitize_url(url: str) -> str:
