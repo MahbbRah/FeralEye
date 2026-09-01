@@ -106,14 +106,14 @@ class GoogleDriveSync:
             self.sync_video_async(event)
 
     def _get_event_subfolder_name(self, event: ConfirmedAlertEvent) -> str:
-        """Generates an event-specific subfolder name: FeralEye-YYYY-MM-DD_HHMMSS-TARGET_XXpct."""
-        time_str = event.triggered_at.strftime("%Y-%m-%d_%H%M%S")
+        """Generates an event-specific subfolder name: MM-DD_HHMMSS-TARGET_XX."""
+        time_str = event.triggered_at.strftime("%m-%d_%H%M%S")
         best_det = event.best_result.best_detection
         if best_det:
             class_name = best_det.class_name.upper()
             conf_pct = int(best_det.confidence * 100)
-            return f"FeralEye-{time_str}-{class_name}_{conf_pct}pct"
-        return f"FeralEye-{time_str}"
+            return f"{time_str}-{class_name}_{conf_pct}"
+        return time_str
 
     def _upload_photo_worker(self, event: ConfirmedAlertEvent) -> None:
         if not event.evidence_image_path:
@@ -280,7 +280,7 @@ class GoogleDriveSync:
 
     def cleanup_old_evidence(self, retention_days: int = 60) -> int:
         """
-        Deletes per-event subfolders (FeralEye-*) inside the sync folder that are
+        Deletes per-event subfolders inside the sync folder that are
         older than `retention_days`, based on the timestamp embedded in the folder name.
 
         Returns the number of folders deleted. Requires a valid token.
@@ -304,8 +304,12 @@ class GoogleDriveSync:
         headers = {"Authorization": f"Bearer {token}"}
         page_token = None
         deleted = 0
-        # Folder names look like: FeralEye-2026-09-01_143022-CAT_88pct
-        name_pattern = re.compile(r"^FeralEye-(\d{4}-\d{2}-\d{2})_(\d{6})(?:-|$)")
+        # Matches both the current name (09-01_143022-CAT_88) and the legacy
+        # FeralEye-prefixed one (FeralEye-2026-09-01_143022-CAT_88pct) so older
+        # folders still age out.
+        name_pattern = re.compile(
+            r"^(?:FeralEye-)?(?:(\d{4})-(\d{2})-(\d{2})|(\d{2})-(\d{2}))_(\d{6})(?:-|$)"
+        )
 
         try:
             while True:
@@ -335,7 +339,21 @@ class GoogleDriveSync:
                     if not m:
                         continue
                     try:
-                        folder_dt = datetime.strptime(f"{m.group(1)}_{m.group(2)}", "%Y-%m-%d_%H%M%S")
+                        if m.group(1):
+                            folder_dt = datetime.strptime(
+                                f"{m.group(1)}-{m.group(2)}-{m.group(3)}_{m.group(6)}",
+                                "%Y-%m-%d_%H%M%S",
+                            )
+                        else:
+                            # strptime defaults missing years to 1900, so inject the
+                            # current year explicitly; if that lands in the future
+                            # (e.g. December folders seen in January), fall back one.
+                            folder_dt = datetime.strptime(
+                                f"{datetime.now().year}-{m.group(4)}-{m.group(5)}_{m.group(6)}",
+                                "%Y-%m-%d_%H%M%S",
+                            )
+                            if folder_dt > datetime.now():
+                                folder_dt = folder_dt.replace(year=folder_dt.year - 1)
                         folder_dt = folder_dt.replace(tzinfo=timezone.utc)
                     except ValueError:
                         continue

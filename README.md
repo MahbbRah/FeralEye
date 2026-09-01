@@ -11,7 +11,7 @@
 - **📸 Automated Evidence Capture**: Automatically annotates and archives high-resolution evidence photos with bounding boxes, confidence scores, and timestamps.
 - **🎥 Event Video Recording**: Captures footage **BEFORE detection** (rolling memory buffer) + **AFTER detection** into a timestamped `.mp4` video clip — a static 20-second clip (10s pre + 10s post, both configurable).
 - **🧹 Automatic Evidence Retention**: Old evidence is pruned automatically — **10 days locally** and **2 months on Google Drive** — so storage never fills up on edge devices (both configurable).
-- **☁️ Google Drive Cloud Sync**: Automatically backs up confirmed photos and event video clips into per-event subfolders (`FeralEye-YYYY-MM-DD_HHMMSS-TARGET_XXpct/`) on your personal Google Drive (15GB/5TB quota).
+- **☁️ Google Drive Cloud Sync**: Automatically backs up confirmed photos and event video clips into per-event subfolders (`MM-DD_HHMMSS-TARGET_XX/`) on your personal Google Drive (15GB/5TB quota).
 - **🚨 Instant Multi-Channel Alerts**:
   - **Ntfy.sh**: Free, instant smartphone push alarms with urgent sirens and attached photos.
   - **Telegram Bot**: Instant photo and metadata push notifications.
@@ -46,7 +46,7 @@ flowchart TD
     
     Evidence --> GDrive["Google Drive Cloud Sync\n(Auto-Uploads Photos & Clips)"]
     ClipRecorder --> GDrive
-    GDrive --> CloudFolder["📁 Google Drive\n/FeralEye-Timestamp-Target/"]
+    GDrive --> CloudFolder["📁 Google Drive\n/MM-DD_HHMMSS-Target/"]
     Evidence --> LocalRetention["Local Evidence Retention\n(prune > 10 days)"]
     GDrive --> CloudRetention["Cloud Evidence Retention\n(prune > 60 days)"]
 ```
