@@ -51,14 +51,15 @@ def test_gdrive(credentials_file: str, folder_id: str):
     cv2.putText(canvas, "FERALEYE GDRIVE TEST", (50, 240), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
     cv2.imwrite(str(test_img_path), canvas)
 
-    print(f"\n2. Uploading test file: {test_img_path.name}...")
-    file_id = sync.upload_file(test_img_path, subfolder_name="Test_Sync", mime_type="image/jpeg")
+    print(f"\n2. Uploading test file directly into target folder: '{sync.folder_id or '(Root)'}'...")
+    file_id = sync.upload_file(test_img_path, subfolder_name=None, mime_type="image/jpeg")
     if file_id:
         print(f"✅ Upload successful! Google Drive File ID: {file_id}")
+        print(f"👉 Check your Google Drive folder: the test file '{test_img_path.name}' is now in your folder!")
         print("🎉 Google Drive Cloud Sync is 100% operational!")
         return True
     else:
-        print("❌ File upload failed. Ensure the Google Drive folder is shared with the Service Account email.")
+        print("❌ File upload failed. Ensure the Google Drive folder ID is correct and permissions are granted.")
         return False
 
 
