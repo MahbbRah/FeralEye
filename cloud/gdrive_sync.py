@@ -105,6 +105,16 @@ class GoogleDriveSync:
         if event.evidence_video_path:
             self.sync_video_async(event)
 
+    def _get_event_subfolder_name(self, event: ConfirmedAlertEvent) -> str:
+        """Generates an event-specific subfolder name: FeralEye-YYYY-MM-DD_HHMMSS-TARGET_XXpct."""
+        time_str = event.triggered_at.strftime("%Y-%m-%d_%H%M%S")
+        best_det = event.best_result.best_detection
+        if best_det:
+            class_name = best_det.class_name.upper()
+            conf_pct = int(best_det.confidence * 100)
+            return f"FeralEye-{time_str}-{class_name}_{conf_pct}pct"
+        return f"FeralEye-{time_str}"
+
     def _upload_photo_worker(self, event: ConfirmedAlertEvent) -> None:
         if not event.evidence_image_path:
             return
@@ -114,13 +124,13 @@ class GoogleDriveSync:
                 return  # Prevent duplicate upload
 
         if img_path.exists():
-            date_folder_name = event.triggered_at.strftime("%Y-%m-%d")
-            logger.info(f"☁️ [Google Drive] Uploading photo: {img_path.name}...")
-            file_id = self.upload_file(img_path, subfolder_name=date_folder_name, mime_type="image/jpeg")
+            event_folder_name = self._get_event_subfolder_name(event)
+            logger.info(f"☁️ [Google Drive] Uploading photo to '{event_folder_name}': {img_path.name}...")
+            file_id = self.upload_file(img_path, subfolder_name=event_folder_name, mime_type="image/jpeg")
             if file_id:
                 with self._lock:
                     self._uploaded_files.add(str(img_path))
-                logger.info(f"✅ ☁️ [Google Drive] Photo uploaded successfully! File ID: {file_id}")
+                logger.info(f"✅ ☁️ [Google Drive] Photo uploaded successfully into '{event_folder_name}'! File ID: {file_id}")
         else:
             logger.warning(f"Google Drive: Evidence image not found on disk: {img_path}")
 
@@ -133,13 +143,13 @@ class GoogleDriveSync:
                 return  # Prevent duplicate upload
 
         if vid_path.exists():
-            date_folder_name = event.triggered_at.strftime("%Y-%m-%d")
-            logger.info(f"☁️ [Google Drive] Uploading 20s video clip: {vid_path.name} ({vid_path.stat().st_size} bytes)...")
-            file_id = self.upload_file(vid_path, subfolder_name=date_folder_name, mime_type="video/mp4")
+            event_folder_name = self._get_event_subfolder_name(event)
+            logger.info(f"☁️ [Google Drive] Uploading 20s video to '{event_folder_name}': {vid_path.name} ({vid_path.stat().st_size} bytes)...")
+            file_id = self.upload_file(vid_path, subfolder_name=event_folder_name, mime_type="video/mp4")
             if file_id:
                 with self._lock:
                     self._uploaded_files.add(str(vid_path))
-                logger.info(f"✅ ☁️ [Google Drive] 20s Event video uploaded successfully! File ID: {file_id}")
+                logger.info(f"✅ ☁️ [Google Drive] 20s Event video uploaded successfully into '{event_folder_name}'! File ID: {file_id}")
         else:
             logger.warning(f"Google Drive: Evidence video not found on disk: {vid_path}")
 
