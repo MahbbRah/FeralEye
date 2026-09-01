@@ -11,7 +11,7 @@
 - **📸 Automated Evidence Capture**: Automatically annotates and archives high-resolution evidence photos with bounding boxes, confidence scores, and timestamps.
 - **🎥 Event Video Recording**: Captures footage **BEFORE detection** (rolling memory buffer) + **AFTER detection** into a timestamped `.mp4` video clip. Clip length is **configurable per class** (e.g., 10s for cats, 30s for people) via `VIDEO_CLIP_LENGTHS`, defaulting to 10s pre + 10s post.
 - **🧹 Automatic Evidence Retention**: Old evidence is pruned automatically — **10 days locally** and **2 months on Google Drive** — so storage never fills up on edge devices (both configurable).
-- **☁️ Google Drive Cloud Sync**: Automatically backs up confirmed photos and 20s video clips into event subfolders (`FeralEye-YYYY-MM-DD_HHMMSS-TARGET_XXpct/`) on your personal Google Drive (15GB/5TB quota).
+- **☁️ Google Drive Cloud Sync**: Automatically backs up confirmed photos and event video clips into per-event subfolders (`FeralEye-YYYY-MM-DD_HHMMSS-TARGET_XXpct/`) on your personal Google Drive (15GB/5TB quota).
 - **🚨 Instant Multi-Channel Alerts**:
   - **Ntfy.sh**: Free, instant smartphone push alarms with urgent sirens and attached photos.
   - **Telegram Bot**: Instant photo and metadata push notifications.
@@ -89,7 +89,7 @@ NTFY_ENABLED=true
 NTFY_TOPIC=my_feraleye_alerts_123
 NTFY_PRIORITY=urgent
 
-# 20-Second Event Video Recording
+# Event Video Recording
 RECORD_EVENT_VIDEO=true
 VIDEO_PRE_BUFFER_SEC=10.0
 VIDEO_POST_BUFFER_SEC=10.0
@@ -114,7 +114,7 @@ python main.py
 
 ## ☁️ Google Drive Cloud Sync Setup
 
-FeralEye can automatically upload confirmed intrusion photos and 20-second video clips to your personal Google Drive (using your 15GB or 5TB personal quota).
+FeralEye can automatically upload confirmed intrusion photos and event video clips to your personal Google Drive (using your 15GB or 5TB personal quota).
 
 ### 1. Create Google OAuth Credentials
 1. Go to [Google Cloud Console Credentials](https://console.cloud.google.com/apis/credentials).
@@ -186,7 +186,7 @@ FeralEye/
 ├── main.py                    # Main service orchestrator
 ├── requirements.txt           # Minimal dependencies
 │
-├── camera/                    # RTSP stream readers (Buffer-1 & 10s rolling pre-buffer)
+├── camera/                    # RTSP stream readers (OpenCV / FFmpeg + rolling pre-buffer)
 ├── detection/                 # YOLO11 detector with per-class thresholds & poultry rejection
 ├── events/                    # Sliding-window state machine & data models
 ├── evidence/                  # Evidence annotator, per-class clip recorder & retention cleanup
