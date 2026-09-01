@@ -211,8 +211,9 @@ class GoogleDriveSync:
             if self._access_token and time.time() < (self._token_expiry - 60):
                 return self._access_token
 
-            # 1. Option A: Direct User OAuth2 Refresh Token (Uses personal Google Drive quota)
+            # 1. Option A: Direct User OAuth2 Refresh Token (Uses your 5TB Google Drive personal quota)
             if self.oauth_refresh_token and self.oauth_client_id and self.oauth_client_secret:
+                logger.info("🔑 [Google Drive] Authenticating via User OAuth2 Refresh Token (uses your personal Drive quota)...")
                 try:
                     res = requests.post(
                         self.TOKEN_URL,
@@ -228,13 +229,15 @@ class GoogleDriveSync:
                         token_data = res.json()
                         self._access_token = token_data["access_token"]
                         self._token_expiry = time.time() + token_data.get("expires_in", 3600)
+                        logger.info("✅ [Google Drive] User OAuth2 token refreshed successfully.")
                         return self._access_token
                     else:
                         logger.error(f"Google Drive User OAuth refresh failed: {res.status_code} - {res.text}")
                 except Exception as e:
                     logger.error(f"Error refreshing Google Drive user OAuth token: {e}")
 
-            # 2. Option B: Service Account JSON
+            # 2. Option B: Service Account JSON (Only works with Shared Drives / Google Workspace)
+            logger.info("🔑 [Google Drive] Falling back to Service Account JSON...")
             if not self.service_account_json_path:
                 logger.warning("Google Drive Sync: Missing GDRIVE_SERVICE_ACCOUNT_JSON or GDRIVE_REFRESH_TOKEN.")
                 return None
