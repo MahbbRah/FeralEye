@@ -189,65 +189,14 @@ FeralEye/
 
 ---
 
-## 📱 Running on Android (via Termux) as a 24/7 Dedicated Server
+## 📱 Dedicated Mobile & Edge Deployments
 
-An old or cracked-screen Android phone (4GB+ RAM) makes an incredible, low-power ($< 1.5\text{W}$), battery-backed 24/7 detection appliance.
+FeralEye is engineered to run seamlessly on low-power devices:
+- **Android Smartphones (via Termux)**: Repurpose an old or cracked-screen Android phone (4GB+ RAM) into a dedicated, low-power ($< 1.5\text{W}$), battery-backed 24/7 security appliance.
+- **Raspberry Pi & SBCs**: Runs on Linux ARM64 Single Board Computers.
+- **macOS / Linux / Windows Servers**: Full hardware acceleration on Apple Silicon (MPS) and NVIDIA GPUs (CUDA).
 
-> 📖 **Full Installation & Troubleshooting Manual**: For the complete deep-dive setup guide, common Android error solutions, and mobile tuning tips, check out our **[Android 24/7 Deployment Guide (ANDROID_SETUP_GUIDE.md)](./ANDROID_SETUP_GUIDE.md)**.
-
-### Quick Setup Summary:
-1. Install **Termux** from [F-Droid](https://f-droid.org/packages/com.termux/) (do not use Google Play build).
-2. Install pre-compiled packages & OpenSSH:
-   ```bash
-   pkg update && pkg upgrade -y
-   pkg install x11-repo tur-repo -y
-   pkg install opencv-python python-torch python-torchvision python-numpy python-pillow dbus libglvnd git openssh -y
-   ```
-3. (Optional) Set up SSH to control the phone from your Mac/PC:
-   ```bash
-   ssh-keygen -A && passwd && sshd
-   # Connect from Mac/PC via: ssh <termux_username>@<phone_ip> -p 8022
-   ```
-
-### 2. Clone & Install Python Packages
-```bash
-git clone https://github.com/MahbbRah/FeralEye.git
-cd FeralEye
-
-pip install ultralytics --no-deps
-pip install python-dotenv requests pyyaml tqdm
-```
-
-### 3. Recommended `.env` for Mobile Phones
-In `nano .env`:
-```ini
-# Use the lightweight sub-stream (640x720) to save mobile CPU
-CAMERA_RTSP_URL=rtsp://192.168.1.233/live/ch00_1
-STREAM_BACKEND=opencv
-
-# Use the lightweight Nano model
-MODEL_NAME=yolo11n.pt
-INFERENCE_IMAGE_SIZE=416
-DETECTION_FPS=0.5
-
-# Alerts
-NTFY_ENABLED=true
-NTFY_TOPIC=Predator_alert_fast
-NTFY_PRIORITY=urgent
-ALERT_COOLDOWN_SEC=180.0
-```
-
-### 4. Run 24/7 with Screen Off
-```bash
-# 1. Prevent Android from sleeping the CPU when display is off
-termux-wake-lock
-
-# 2. Start the service (runs in background and logs to file)
-nohup python main.py > logs/camera_guard.log 2>&1 &
-```
-*(To view live logs: `tail -f logs/camera_guard.log` | To stop: `pkill -f main.py`)*
-
-> **Tip:** Go to Android **Settings → Apps → Termux → Battery → Set to "Unrestricted" / "Don't Optimize"** so Android OS never kills the background service.
+👉 **For the complete step-by-step Android installation, performance configuration, and troubleshooting guide, see [ANDROID_SETUP_GUIDE.md](./ANDROID_SETUP_GUIDE.md)**.
 
 ---
 
