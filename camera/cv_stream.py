@@ -33,11 +33,17 @@ class OpenCVRTSPStream(BaseStreamReader):
         reconnect_initial_delay_sec: float = 2.0,
         reconnect_max_delay_sec: float = 30.0,
         pre_buffer_max_frames: int = 300,
+        output_width: int = 1280,
+        output_height: int = 720,
     ):
         self.rtsp_url = rtsp_url
         self.connect_timeout_sec = connect_timeout_sec
         self.reconnect_initial_delay = reconnect_initial_delay_sec
         self.reconnect_max_delay = reconnect_max_delay_sec
+        self.output_width = output_width
+        self.output_height = output_height
+        # Pixel budget used to downscale oversized streams while preserving aspect ratio.
+        self._target_pixels = output_width * output_height
 
         self._running = False
         self._connected = False
@@ -147,6 +153,17 @@ class OpenCVRTSPStream(BaseStreamReader):
                         continue
 
                     consecutive_failures = 0
+                    # Downscale oversized streams (aspect preserved) to a 720p-class
+                    # pixel budget: raw 4K frames make the rolling pre-buffer alone
+                    # hold multiple GB, causing swap churn and thermal throttling
+                    # on edge devices.
+                    h, w = frame.shape[:2]
+                    scale = (self._target_pixels / float(h * w)) ** 0.5
+                    if scale < 1.0:
+                        new_w = max(2, int(w * scale) // 2 * 2)
+                        new_h = max(2, int(h * scale) // 2 * 2)
+                        frame = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_AREA)
+
                     now = time.time()
                     with self._lock:
                         self._latest_frame = frame

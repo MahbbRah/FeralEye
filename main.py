@@ -150,6 +150,8 @@ def main():
             connect_timeout_sec=config.CAMERA_CONNECT_TIMEOUT_SEC,
             reconnect_initial_delay_sec=config.CAMERA_RECONNECT_INITIAL_DELAY_SEC,
             reconnect_max_delay_sec=config.CAMERA_RECONNECT_MAX_DELAY_SEC,
+            output_width=1280,
+            output_height=720,
         )
 
     detector = YOLODetector(
