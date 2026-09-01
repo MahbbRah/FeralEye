@@ -58,34 +58,6 @@ def _get_list(key: str, default: List[str]) -> List[str]:
     return [x.strip() for x in val.split(",") if x.strip()]
 
 
-def _get_dict(key: str, default: dict) -> dict:
-    val = os.getenv(key)
-    if val is None or not val.strip():
-        return default
-    val = val.strip()
-    # JSON object form: {"cat": 10, "person": 30}
-    if val.startswith("{") and val.endswith("}"):
-        try:
-            parsed = json.loads(val)
-            if isinstance(parsed, dict):
-                return {str(k).strip(): float(v) for k, v in parsed.items()}
-        except Exception:
-            pass
-    # Comma-separated class=duration pairs
-    out: dict = {}
-    for part in val.split(","):
-        part = part.strip()
-        if not part:
-            continue
-        if "=" in part:
-            k, v = part.split("=", 1)
-            try:
-                out[k.strip().lower()] = float(v.strip())
-            except ValueError:
-                continue
-    return out
-
-
 @dataclass
 class AppConfig:
     # General metadata
@@ -123,9 +95,6 @@ class AppConfig:
     VIDEO_PRE_BUFFER_SEC: float = _get_float("VIDEO_PRE_BUFFER_SEC", 10.0)
     VIDEO_POST_BUFFER_SEC: float = _get_float("VIDEO_POST_BUFFER_SEC", 10.0)
     VIDEO_CLIP_FPS: float = _get_float("VIDEO_CLIP_FPS", 10.0)
-    # Per-class clip lengths. Format: comma-separated class=duration pairs, e.g. "cat=10,person=30".
-    # JSON arrays also accepted. Any class not listed falls back to VIDEO_PRE_BUFFER_SEC/VIDEO_POST_BUFFER_SEC.
-    VIDEO_CLIP_LENGTHS: dict = field(default_factory=lambda: _get_dict("VIDEO_CLIP_LENGTHS", {}))
 
     # Evidence Retention Policy
     # Local evidence files older than this many days are deleted automatically.

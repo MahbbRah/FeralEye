@@ -9,7 +9,7 @@
 - **⚡ Lightweight & Fast**: Samples frames at 1 FPS, utilizing `< 2%` CPU on Apple Silicon / edge devices with `yolo11s` / `yolo11n`.
 - **🛡️ Sliding-Window Confirmation**: Requires multiple positive detections across a configurable time window (e.g., $\ge 2$ detections in 4 seconds) to eliminate transient false positives.
 - **📸 Automated Evidence Capture**: Automatically annotates and archives high-resolution evidence photos with bounding boxes, confidence scores, and timestamps.
-- **🎥 Event Video Recording**: Captures footage **BEFORE detection** (rolling memory buffer) + **AFTER detection** into a timestamped `.mp4` video clip. Clip length is **configurable per class** (e.g., 10s for cats, 30s for people) via `VIDEO_CLIP_LENGTHS`, defaulting to 10s pre + 10s post.
+- **🎥 Event Video Recording**: Captures footage **BEFORE detection** (rolling memory buffer) + **AFTER detection** into a timestamped `.mp4` video clip — a static 20-second clip (10s pre + 10s post, both configurable).
 - **🧹 Automatic Evidence Retention**: Old evidence is pruned automatically — **10 days locally** and **2 months on Google Drive** — so storage never fills up on edge devices (both configurable).
 - **☁️ Google Drive Cloud Sync**: Automatically backs up confirmed photos and event video clips into per-event subfolders (`FeralEye-YYYY-MM-DD_HHMMSS-TARGET_XXpct/`) on your personal Google Drive (15GB/5TB quota).
 - **🚨 Instant Multi-Channel Alerts**:
@@ -35,7 +35,7 @@ flowchart TD
     YOLO --> StateEngine["Confirmation State Engine\n(Sliding Window & Cooldown)"]
     
     StateEngine -- "ALERT CONFIRMED" --> Evidence["Evidence Photo Storage\n(Annotated JPEG)"]
-    StateEngine -- "ALERT CONFIRMED" --> ClipRecorder["Event Video Clip Recorder\n(Pre-Buffer + Post-Buffer, per-class length)"]
+    StateEngine -- "ALERT CONFIRMED" --> ClipRecorder["Event Video Clip Recorder\n(10s Pre-Buffer + 10s Post-Buffer)"]
     StateEngine -- "ALERT CONFIRMED" --> Dispatcher["Async Alert Dispatcher"]
     
     Dispatcher --> Ntfy["Ntfy Push Alarm"]
@@ -93,8 +93,6 @@ NTFY_PRIORITY=urgent
 RECORD_EVENT_VIDEO=true
 VIDEO_PRE_BUFFER_SEC=10.0
 VIDEO_POST_BUFFER_SEC=10.0
-# Per-class clip lengths (seconds); any class not listed uses PRE/POST above
-VIDEO_CLIP_LENGTHS={"cat": 10, "dog": 10, "person": 30}
 
 # Evidence Retention (10 days local, 2 months on Drive)
 RETENTION_LOCAL_DAYS=10
@@ -189,7 +187,7 @@ FeralEye/
 ├── camera/                    # RTSP stream readers (OpenCV / FFmpeg + rolling pre-buffer)
 ├── detection/                 # YOLO11 detector with per-class thresholds & poultry rejection
 ├── events/                    # Sliding-window state machine & data models
-├── evidence/                  # Evidence annotator, per-class clip recorder & retention cleanup
+├── evidence/                  # Evidence annotator, event clip recorder & retention cleanup
 ├── cloud/                     # Google Drive Cloud Sync provider (OAuth2 & Service Account)
 ├── alerts/                    # Dispatcher & multi-channel notification providers
 ├── tools/                     # Token generator, diagnostics, simulation & evaluator

@@ -143,7 +143,6 @@ def main():
             output_height=720,
             reconnect_initial_delay_sec=config.CAMERA_RECONNECT_INITIAL_DELAY_SEC,
             reconnect_max_delay_sec=config.CAMERA_RECONNECT_MAX_DELAY_SEC,
-            pre_buffer_max_frames=max(30, int(config.VIDEO_PRE_BUFFER_SEC * config.DETECTION_FPS) + 20),
         )
     else:
         stream = OpenCVRTSPStream(
@@ -183,7 +182,6 @@ def main():
         post_buffer_sec=config.VIDEO_POST_BUFFER_SEC,
         target_fps=config.VIDEO_CLIP_FPS,
         enabled=config.RECORD_EVENT_VIDEO,
-        clip_lengths=config.VIDEO_CLIP_LENGTHS,
     )
 
     evidence_retention = EvidenceRetention(
