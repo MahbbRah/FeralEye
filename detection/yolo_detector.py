@@ -27,9 +27,19 @@ class YOLODetector:
         imgsz: int = 640
     ):
         self.model_name = model_name
-        self.confidence_threshold = confidence_threshold
-        self.imgsz = imgsz
-        self.target_classes = [c.lower() for c in (target_classes or ["cat"])]
+        # Class aliases for user convenience
+        aliases = {
+            "human": "person",
+            "people": "person",
+            "feline": "cat",
+            "canine": "dog",
+        }
+        normalized_targets = []
+        for c in (target_classes or ["cat"]):
+            c_clean = c.lower().strip()
+            normalized_targets.append(aliases.get(c_clean, c_clean))
+
+        self.target_classes = normalized_targets
 
         self._device = self._select_device()
         logger.info(f"Loading YOLO model '{self.model_name}' on device '{self._device}'...")
