@@ -246,16 +246,16 @@ def main():
                     # 2. Non-blocking concurrent alert dispatch (Push/Telegram/Email)
                     alert_dispatcher.dispatch(alert_event)
 
-                    # 3. Google Drive Sync (Photos immediately)
+                    # 3. Google Drive Sync (Photo immediately upon detection)
                     if config.GDRIVE_SYNC_ENABLED:
-                        gdrive_sync.sync_event_async(alert_event)
+                        gdrive_sync.sync_photo_async(alert_event)
 
                     # 4. 20-Second Event Video Recording (10s Pre-buffer + 10s Post-buffer)
                     if config.RECORD_EVENT_VIDEO:
                         clip_recorder.record_event_clip_async(
                             event=alert_event,
                             stream=stream,
-                            on_complete_callback=lambda ev: gdrive_sync.sync_event_async(ev) if config.GDRIVE_SYNC_ENABLED else None
+                            on_complete_callback=lambda ev: gdrive_sync.sync_video_async(ev) if config.GDRIVE_SYNC_ENABLED else None
                         )
 
             # Periodic Telemetry & Performance Logging

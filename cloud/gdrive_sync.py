@@ -44,7 +44,7 @@ class GoogleDriveSync:
         self.oauth_client_id = oauth_client_id
         self.oauth_client_secret = oauth_client_secret
         self.oauth_refresh_token = oauth_refresh_token
-        self.folder_id = folder_id.strip() if folder_id else None
+        self.folder_id = self._clean_folder_id(folder_id)
         self.enabled = enabled
         self.upload_photos = upload_photos
         self.upload_videos = upload_videos
@@ -52,57 +52,96 @@ class GoogleDriveSync:
         self._access_token: Optional[str] = None
         self._token_expiry: float = 0.0
         self._folder_cache: Dict[str, str] = {}
+        self._uploaded_files = set()
         self._lock = threading.Lock()
 
         if self.enabled:
             logger.info(
-                f"☁️ [Google Drive Sync] ENABLED. Creds: '{self.service_account_json_path}', "
-                f"Folder ID: '{self.folder_id or '(Root)'}'"
+                f"☁️ [Google Drive Sync] ENABLED. Folder ID: '{self.folder_id or '(Root)'}'"
             )
         else:
             logger.info("☁️ [Google Drive Sync] DISABLED in config (GDRIVE_SYNC_ENABLED=false).")
 
-    def sync_event_async(self, event: ConfirmedAlertEvent) -> None:
-        """Queues background upload of event photo and/or video."""
-        if not self.enabled:
-            logger.debug("Google Drive sync skipped: GDRIVE_SYNC_ENABLED is false.")
-            return
+    @staticmethod
+    def _clean_folder_id(val: Optional[str]) -> Optional[str]:
+        """Cleans and extracts raw folder ID even if full URL or quoted string is provided."""
+        if not val:
+            return None
+        val = val.strip().strip("'\"")
+        if not val:
+            return None
+        # Handle full Google Drive URLs like https://drive.google.com/drive/folders/1A2B3C...
+        if "/folders/" in val:
+            val = val.split("/folders/")[-1].split("?")[0].split("/")[0]
+        return val.strip()
 
-        logger.info(f"☁️ [Google Drive] Queuing upload for Event ID: {event.event_id}...")
+    def sync_photo_async(self, event: ConfirmedAlertEvent) -> None:
+        """Asynchronously uploads the event photo."""
+        if not self.enabled or not self.upload_photos:
+            return
         thread = threading.Thread(
-            target=self._sync_worker,
+            target=self._upload_photo_worker,
             args=(event,),
-            name=f"GDriveSync-{event.event_id}",
+            name=f"GDrivePhotoSync-{event.event_id}",
             daemon=True
         )
         thread.start()
 
-    def _sync_worker(self, event: ConfirmedAlertEvent) -> None:
-        """Worker thread executing photo and video uploads."""
-        date_folder_name = event.triggered_at.strftime("%Y-%m-%d")
-        logger.info(f"☁️ [Google Drive] Starting background sync worker for Event {event.event_id} (Target folder: '{date_folder_name}')...")
+    def sync_video_async(self, event: ConfirmedAlertEvent) -> None:
+        """Asynchronously uploads the 20s event video clip."""
+        if not self.enabled or not self.upload_videos:
+            return
+        thread = threading.Thread(
+            target=self._upload_video_worker,
+            args=(event,),
+            name=f"GDriveVideoSync-{event.event_id}",
+            daemon=True
+        )
+        thread.start()
 
-        # 1. Upload Evidence Photo
-        if self.upload_photos and event.evidence_image_path:
-            img_path = Path(event.evidence_image_path)
-            if img_path.exists():
-                logger.info(f"☁️ [Google Drive] Uploading photo: {img_path.name}...")
-                file_id = self.upload_file(img_path, subfolder_name=date_folder_name, mime_type="image/jpeg")
-                if file_id:
-                    logger.info(f"✅ ☁️ [Google Drive] Photo uploaded successfully! File ID: {file_id}")
-            else:
-                logger.warning(f"Google Drive: Evidence image not found on disk: {img_path}")
+    def sync_event_async(self, event: ConfirmedAlertEvent) -> None:
+        """Legacy helper: Queues both photo and video if ready."""
+        self.sync_photo_async(event)
+        if event.evidence_video_path:
+            self.sync_video_async(event)
 
-        # 2. Upload Evidence Video Clip
-        if self.upload_videos and event.evidence_video_path:
-            vid_path = Path(event.evidence_video_path)
-            if vid_path.exists():
-                logger.info(f"☁️ [Google Drive] Uploading 20s video clip: {vid_path.name} ({vid_path.stat().st_size} bytes)...")
-                file_id = self.upload_file(vid_path, subfolder_name=date_folder_name, mime_type="video/mp4")
-                if file_id:
-                    logger.info(f"✅ ☁️ [Google Drive] 20s Event video uploaded successfully! File ID: {file_id}")
-            else:
-                logger.warning(f"Google Drive: Evidence video not found on disk: {vid_path}")
+    def _upload_photo_worker(self, event: ConfirmedAlertEvent) -> None:
+        if not event.evidence_image_path:
+            return
+        img_path = Path(event.evidence_image_path)
+        with self._lock:
+            if str(img_path) in self._uploaded_files:
+                return  # Prevent duplicate upload
+
+        if img_path.exists():
+            date_folder_name = event.triggered_at.strftime("%Y-%m-%d")
+            logger.info(f"☁️ [Google Drive] Uploading photo: {img_path.name}...")
+            file_id = self.upload_file(img_path, subfolder_name=date_folder_name, mime_type="image/jpeg")
+            if file_id:
+                with self._lock:
+                    self._uploaded_files.add(str(img_path))
+                logger.info(f"✅ ☁️ [Google Drive] Photo uploaded successfully! File ID: {file_id}")
+        else:
+            logger.warning(f"Google Drive: Evidence image not found on disk: {img_path}")
+
+    def _upload_video_worker(self, event: ConfirmedAlertEvent) -> None:
+        if not event.evidence_video_path:
+            return
+        vid_path = Path(event.evidence_video_path)
+        with self._lock:
+            if str(vid_path) in self._uploaded_files:
+                return  # Prevent duplicate upload
+
+        if vid_path.exists():
+            date_folder_name = event.triggered_at.strftime("%Y-%m-%d")
+            logger.info(f"☁️ [Google Drive] Uploading 20s video clip: {vid_path.name} ({vid_path.stat().st_size} bytes)...")
+            file_id = self.upload_file(vid_path, subfolder_name=date_folder_name, mime_type="video/mp4")
+            if file_id:
+                with self._lock:
+                    self._uploaded_files.add(str(vid_path))
+                logger.info(f"✅ ☁️ [Google Drive] 20s Event video uploaded successfully! File ID: {file_id}")
+        else:
+            logger.warning(f"Google Drive: Evidence video not found on disk: {vid_path}")
 
     def upload_file(
         self,
@@ -173,7 +212,12 @@ class GoogleDriveSync:
             res = requests.get(
                 self.DRIVE_FILES_URL,
                 headers=headers,
-                params={"q": query, "fields": "files(id, name)"},
+                params={
+                    "q": query,
+                    "fields": "files(id, name)",
+                    "supportsAllDrives": "true",
+                    "includeItemsFromAllDrives": "true"
+                },
                 timeout=10.0
             )
             if res.status_code == 200:
@@ -183,14 +227,14 @@ class GoogleDriveSync:
                     self._folder_cache[cache_key] = folder_id
                     return folder_id
 
-            # Create folder
+            # Create folder inside parent_id
             meta = {
                 "name": folder_name,
                 "mimeType": "application/vnd.google-apps.folder",
                 "parents": [parent_id]
             }
             create_res = requests.post(
-                self.DRIVE_FILES_URL,
+                f"{self.DRIVE_FILES_URL}?supportsAllDrives=true",
                 headers=headers,
                 json=meta,
                 timeout=10.0
@@ -199,6 +243,8 @@ class GoogleDriveSync:
                 new_id = create_res.json().get("id")
                 self._folder_cache[cache_key] = new_id
                 return new_id
+            else:
+                logger.error(f"Google Drive create subfolder failed ({create_res.status_code}): {create_res.text}")
 
         except Exception as e:
             logger.error(f"Failed to query/create Google Drive subfolder '{folder_name}': {e}")
