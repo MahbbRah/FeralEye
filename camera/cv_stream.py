@@ -52,6 +52,10 @@ class OpenCVRTSPStream(BaseStreamReader):
         # Enforce TCP transport with a 5-second socket timeout (stimeout in microseconds)
         # Prevents timeout=0 instant drop when camera is negotiating handshake
         os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp|stimeout;5000000|max_delay;500000"
+        # Filter libavcodec decode noise (e.g. "Could not find ref with POC") that appears
+        # at startup while the 4K pre-buffer fills and the reader momentarily stalls.
+        # 8 = AV_LOG_FATAL: ERROR-level decoder chatter is dropped, real failures surface.
+        os.environ["OPENCV_FFMPEG_LOGLEVEL"] = "8"
 
     def start(self) -> None:
         """Starts the background frame capture thread."""
