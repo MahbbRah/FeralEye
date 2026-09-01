@@ -61,8 +61,8 @@ class YOLODetector:
 
         # Class-specific confidence thresholds (e.g. higher for person to avoid chicken false positives)
         self.class_thresholds = {
-            "person": 0.55,
-            "human": 0.55,
+            "person": 0.65,
+            "human": 0.65,
             "cat": self.confidence_threshold,
             "dog": self.confidence_threshold,
         }
@@ -96,12 +96,13 @@ class YOLODetector:
         timestamp = datetime.now()
         t0 = time.perf_counter()
 
-        # Run inference with lowest base threshold to capture all candidate boxes
+        # Run inference across all classes without restricting 'classes=...'
+        # This allows chickens/roosters to be correctly classified as 'bird' (class 14)
+        # rather than being forced into 'person' (class 0) by class filtering!
         min_conf = min(self.confidence_threshold, 0.20)
         results = self.model.predict(
             source=frame,
             conf=min_conf,
-            classes=list(self.target_class_ids) if self.target_class_ids else None,
             imgsz=self.imgsz,
             device=self._device,
             verbose=False,
@@ -117,11 +118,27 @@ class YOLODetector:
                 conf = float(box.conf[0].item())
                 class_name = self.class_names.get(cls_id, f"class_{cls_id}").lower()
 
-                # Get class-specific threshold (fallback to default)
+                # Discard chickens/birds immediately
+                if class_name in ("bird", "chicken"):
+                    continue
+
+                # Only evaluate target classes configured by user
+                if class_name not in self.target_classes and cls_id not in self.target_class_ids:
+                    continue
+
+                # Get class-specific threshold (e.g. 0.65 for person, 0.25 for cat/dog)
                 required_conf = self.class_thresholds.get(class_name, self.confidence_threshold)
 
                 if conf >= required_conf:
                     x1, y1, x2, y2 = box.xyxy[0].tolist()
+                    box_h = abs(y2 - y1)
+                    box_w = abs(x2 - x1)
+
+                    # Physical sanity check: A real human cannot be a tiny 40px box
+                    if class_name == "person" and box_h < 80:
+                        # Too small to be a human in view (likely small animal/bird artifact)
+                        continue
+
                     detections.append(
                         Detection(
                             class_name=class_name,
