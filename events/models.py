@@ -51,3 +51,4 @@ class ConfirmedAlertEvent:
     confirmed_detections: List[FrameDetectionResult]
     best_result: FrameDetectionResult
     evidence_image_path: Optional[str] = None
+    evidence_video_path: Optional[str] = None

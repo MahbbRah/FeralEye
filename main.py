@@ -20,6 +20,8 @@ from detection.yolo_detector import YOLODetector
 from detection.motion_filter import MotionFilter
 from events.state_engine import DetectionStateEngine, State
 from evidence.storage import EvidenceStorage
+from evidence.clip_recorder import EventVideoRecorder
+from cloud.gdrive_sync import GoogleDriveSync
 from alerts.base import BaseAlertHandler
 from alerts.console_alert import ConsoleAlertHandler
 from alerts.telegram_alert import TelegramAlertHandler
@@ -173,6 +175,22 @@ def main():
         save_raw=config.SAVE_RAW_IMAGE,
     )
 
+    clip_recorder = EventVideoRecorder(
+        evidence_directory=config.EVIDENCE_DIRECTORY,
+        pre_buffer_sec=config.VIDEO_PRE_BUFFER_SEC,
+        post_buffer_sec=config.VIDEO_POST_BUFFER_SEC,
+        target_fps=config.VIDEO_CLIP_FPS,
+        enabled=config.RECORD_EVENT_VIDEO,
+    )
+
+    gdrive_sync = GoogleDriveSync(
+        service_account_json_path=config.GDRIVE_SERVICE_ACCOUNT_JSON,
+        folder_id=config.GDRIVE_FOLDER_ID,
+        enabled=config.GDRIVE_SYNC_ENABLED,
+        upload_photos=config.GDRIVE_UPLOAD_PHOTOS,
+        upload_videos=config.GDRIVE_UPLOAD_VIDEOS,
+    )
+
     alert_dispatcher = build_alert_dispatcher()
 
     # 4. Start RTSP background reader
@@ -219,11 +237,23 @@ def main():
 
                 # Step 4: Handle Confirmed Alert
                 if alert_event:
-                    # Save evidence image to disk
+                    # 1. Save evidence image to disk
                     saved_path = evidence_storage.save_event_evidence(alert_event)
 
-                    # Non-blocking concurrent alert dispatch
+                    # 2. Non-blocking concurrent alert dispatch (Push/Telegram/Email)
                     alert_dispatcher.dispatch(alert_event)
+
+                    # 3. Google Drive Sync (Photos immediately)
+                    if config.GDRIVE_SYNC_ENABLED:
+                        gdrive_sync.sync_event_async(alert_event)
+
+                    # 4. 20-Second Event Video Recording (10s Pre-buffer + 10s Post-buffer)
+                    if config.RECORD_EVENT_VIDEO:
+                        clip_recorder.record_event_clip_async(
+                            event=alert_event,
+                            stream=stream,
+                            on_complete_callback=lambda ev: gdrive_sync.sync_event_async(ev) if config.GDRIVE_SYNC_ENABLED else None
+                        )
 
             # Periodic Telemetry & Performance Logging
             now_sec = time.time()

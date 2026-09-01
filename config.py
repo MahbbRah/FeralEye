@@ -87,10 +87,22 @@ class AppConfig:
     CONFIRMATION_WINDOW_SEC: float = _get_float("CONFIRMATION_WINDOW_SEC", 4.0)
     ALERT_COOLDOWN_SEC: float = _get_float("ALERT_COOLDOWN_SEC", 180.0)
 
-    # Evidence Storage
+    # Evidence Storage & Video Clip Recording
     EVIDENCE_DIRECTORY: Path = field(default_factory=lambda: Path(os.getenv("EVIDENCE_DIRECTORY", "./evidence_storage")))
     SAVE_ANNOTATED_IMAGE: bool = _get_bool("SAVE_ANNOTATED_IMAGE", True)
     SAVE_RAW_IMAGE: bool = _get_bool("SAVE_RAW_IMAGE", False)
+    RECORD_EVENT_VIDEO: bool = _get_bool("RECORD_EVENT_VIDEO", True)
+    VIDEO_PRE_BUFFER_SEC: float = _get_float("VIDEO_PRE_BUFFER_SEC", 10.0)
+    VIDEO_POST_BUFFER_SEC: float = _get_float("VIDEO_POST_BUFFER_SEC", 10.0)
+    VIDEO_CLIP_FPS: float = _get_float("VIDEO_CLIP_FPS", 10.0)
+
+    # --- CLOUD SYNC ---
+    # Google Drive Cloud Sync
+    GDRIVE_SYNC_ENABLED: bool = _get_bool("GDRIVE_SYNC_ENABLED", False)
+    GDRIVE_SERVICE_ACCOUNT_JSON: Optional[str] = os.getenv("GDRIVE_SERVICE_ACCOUNT_JSON", None)
+    GDRIVE_FOLDER_ID: Optional[str] = os.getenv("GDRIVE_FOLDER_ID", None)
+    GDRIVE_UPLOAD_VIDEOS: bool = _get_bool("GDRIVE_UPLOAD_VIDEOS", True)
+    GDRIVE_UPLOAD_PHOTOS: bool = _get_bool("GDRIVE_UPLOAD_PHOTOS", True)
 
     # --- ALERT INTEGRATIONS ---
     # Telegram Bot

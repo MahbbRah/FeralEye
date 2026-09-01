@@ -26,6 +26,14 @@ class BaseStreamReader(ABC):
         """
         pass
 
+    @abstractmethod
+    def get_recent_frames(self, duration_sec: float = 10.0):
+        """
+        Retrieves a list of (timestamp, frame) from the rolling pre-buffer
+        covering the past `duration_sec` seconds.
+        """
+        pass
+
     @property
     @abstractmethod
     def is_connected(self) -> bool:
