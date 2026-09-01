@@ -27,6 +27,9 @@ class YOLODetector:
         imgsz: int = 640
     ):
         self.model_name = model_name
+        self.confidence_threshold = confidence_threshold
+        self.imgsz = imgsz
+
         # Class aliases for user convenience
         aliases = {
             "human": "person",
