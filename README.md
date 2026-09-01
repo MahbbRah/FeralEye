@@ -9,7 +9,8 @@
 - **⚡ Lightweight & Fast**: Samples frames at 1 FPS, utilizing `< 2%` CPU on Apple Silicon / edge devices with `yolo11s` / `yolo11n`.
 - **🛡️ Sliding-Window Confirmation**: Requires multiple positive detections across a configurable time window (e.g., $\ge 2$ detections in 4 seconds) to eliminate transient false positives.
 - **📸 Automated Evidence Capture**: Automatically annotates and archives high-resolution evidence photos with bounding boxes, confidence scores, and timestamps.
-- **🎥 20-Second Event Video Recording**: Captures **10 seconds BEFORE detection** (rolling memory buffer) + **10 seconds AFTER detection** into a timestamped `.mp4` video clip.
+- **🎥 Event Video Recording**: Captures footage **BEFORE detection** (rolling memory buffer) + **AFTER detection** into a timestamped `.mp4` video clip. Clip length is **configurable per class** (e.g., 10s for cats, 30s for people) via `VIDEO_CLIP_LENGTHS`, defaulting to 10s pre + 10s post.
+- **🧹 Automatic Evidence Retention**: Old evidence is pruned automatically — **10 days locally** and **2 months on Google Drive** — so storage never fills up on edge devices (both configurable).
 - **☁️ Google Drive Cloud Sync**: Automatically backs up confirmed photos and 20s video clips into event subfolders (`FeralEye-YYYY-MM-DD_HHMMSS-TARGET_XXpct/`) on your personal Google Drive (15GB/5TB quota).
 - **🚨 Instant Multi-Channel Alerts**:
   - **Ntfy.sh**: Free, instant smartphone push alarms with urgent sirens and attached photos.
@@ -90,6 +91,12 @@ NTFY_PRIORITY=urgent
 RECORD_EVENT_VIDEO=true
 VIDEO_PRE_BUFFER_SEC=10.0
 VIDEO_POST_BUFFER_SEC=10.0
+# Per-class clip lengths (seconds); any class not listed uses PRE/POST above
+VIDEO_CLIP_LENGTHS={"cat": 10, "dog": 10, "person": 30}
+
+# Evidence Retention (10 days local, 2 months on Drive)
+RETENTION_LOCAL_DAYS=10
+GDRIVE_RETENTION_DAYS=60
 
 # Google Drive Cloud Sync
 GDRIVE_SYNC_ENABLED=false
@@ -180,7 +187,7 @@ FeralEye/
 ├── camera/                    # RTSP stream readers (Buffer-1 & 10s rolling pre-buffer)
 ├── detection/                 # YOLO11 detector with per-class thresholds & poultry rejection
 ├── events/                    # Sliding-window state machine & data models
-├── evidence/                  # Evidence annotator & 20s Pre/Post Video Clip Recorder
+├── evidence/                  # Evidence annotator, per-class clip recorder & retention cleanup
 ├── cloud/                     # Google Drive Cloud Sync provider (OAuth2 & Service Account)
 ├── alerts/                    # Dispatcher & multi-channel notification providers
 ├── tools/                     # Token generator, diagnostics, simulation & evaluator
