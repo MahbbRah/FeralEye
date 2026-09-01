@@ -63,3 +63,6 @@ ehthumbs.db
 Thumbs.db
 .vscode/
 .idea/
+
+# Command Code local state
+.commandcode/

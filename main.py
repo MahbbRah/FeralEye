@@ -21,6 +21,7 @@ from detection.motion_filter import MotionFilter
 from events.state_engine import DetectionStateEngine, State
 from evidence.storage import EvidenceStorage
 from evidence.clip_recorder import EventVideoRecorder
+from evidence.retention import EvidenceRetention
 from cloud.gdrive_sync import GoogleDriveSync
 from alerts.base import BaseAlertHandler
 from alerts.console_alert import ConsoleAlertHandler
@@ -181,6 +182,14 @@ def main():
         post_buffer_sec=config.VIDEO_POST_BUFFER_SEC,
         target_fps=config.VIDEO_CLIP_FPS,
         enabled=config.RECORD_EVENT_VIDEO,
+        clip_lengths=config.VIDEO_CLIP_LENGTHS,
+    )
+
+    evidence_retention = EvidenceRetention(
+        base_dir=config.EVIDENCE_DIRECTORY,
+        retention_days=config.RETENTION_LOCAL_DAYS,
+        check_interval_sec=config.RETENTION_CHECK_INTERVAL_SEC,
+        enabled=True,
     )
 
     gdrive_sync = GoogleDriveSync(
@@ -199,9 +208,13 @@ def main():
     # 4. Start RTSP background reader
     stream.start()
 
+    # Start local evidence retention (background thread; prunes old files on interval)
+    evidence_retention.start()
+
     # 5. Timing and metrics state
     target_interval = 1.0 / max(0.1, config.DETECTION_FPS)
     last_metrics_log_time = time.time()
+    last_cloud_retention_time = time.time()
     frames_processed_count = 0
     total_inference_time_ms = 0.0
     process_handle = psutil.Process() if has_psutil else None
@@ -278,6 +291,15 @@ def main():
                 frames_processed_count = 0
                 total_inference_time_ms = 0.0
 
+            # Periodic Google Drive cloud retention (older events pruned by GDRIVE_RETENTION_DAYS)
+            if config.GDRIVE_SYNC_ENABLED and (now_sec - last_cloud_retention_time) >= config.RETENTION_CHECK_INTERVAL_SEC:
+                logger.info("☁️ [Google Drive] Running periodic cloud retention cleanup...")
+                try:
+                    gdrive_sync.cleanup_old_evidence(retention_days=config.GDRIVE_RETENTION_DAYS)
+                except Exception as e:
+                    logger.exception(f"Google Drive cloud retention failed: {e}")
+                last_cloud_retention_time = now_sec
+
             # Frame rate throttle
             elapsed_loop = time.perf_counter() - loop_start
             sleep_time = target_interval - elapsed_loop
@@ -290,6 +312,7 @@ def main():
         logger.exception(f"Unhandled fatal error in detection loop: {e}")
     finally:
         logger.info("Cleaning up resources...")
+        evidence_retention.stop()
         stream.stop()
         alert_dispatcher.shutdown(wait=False)
         logger.info("Predator Guard service shut down cleanly.")

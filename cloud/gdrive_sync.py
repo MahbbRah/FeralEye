@@ -276,6 +276,102 @@ class GoogleDriveSync:
 
         return parent_id
 
+    # --- Cloud Retention / Cleanup ---
+
+    def cleanup_old_evidence(self, retention_days: int = 60) -> int:
+        """
+        Deletes per-event subfolders (FeralEye-*) inside the sync folder that are
+        older than `retention_days`, based on the timestamp embedded in the folder name.
+
+        Returns the number of folders deleted. Requires a valid token.
+        """
+        if not self.enabled:
+            return 0
+        token = self._get_valid_token()
+        if not token:
+            logger.error("Google Drive cleanup aborted: No valid access token.")
+            return 0
+
+        parent_id = self.folder_id
+        if not parent_id:
+            logger.warning("Google Drive cleanup skipped: no GDRIVE_FOLDER_ID configured.")
+            return 0
+
+        import re
+        from datetime import datetime, timedelta, timezone
+
+        cutoff = datetime.now(timezone.utc) - timedelta(days=max(1, int(retention_days)))
+        headers = {"Authorization": f"Bearer {token}"}
+        page_token = None
+        deleted = 0
+        # Folder names look like: FeralEye-2026-09-01_143022-CAT_88pct
+        name_pattern = re.compile(r"^FeralEye-(\d{4}-\d{2}-\d{2})_(\d{6})(?:-|$)")
+
+        try:
+            while True:
+                params = {
+                    "q": (
+                        f"'{parent_id}' in parents and "
+                        "mimeType = 'application/vnd.google-apps.folder' and "
+                        "trashed = false"
+                    ),
+                    "fields": "nextPageToken, files(id, name)",
+                    "pageSize": "200",
+                    "supportsAllDrives": "true",
+                    "includeItemsFromAllDrives": "true",
+                }
+                if page_token:
+                    params["pageToken"] = page_token
+
+                res = requests.get(self.DRIVE_FILES_URL, headers=headers, params=params, timeout=15.0)
+                if res.status_code != 200:
+                    logger.error(f"Google Drive cleanup listing failed ({res.status_code}): {res.text}")
+                    break
+
+                data = res.json()
+                for f in data.get("files", []):
+                    name = f.get("name", "")
+                    m = name_pattern.match(name)
+                    if not m:
+                        continue
+                    try:
+                        folder_dt = datetime.strptime(f"{m.group(1)}_{m.group(2)}", "%Y-%m-%d_%H%M%S")
+                        folder_dt = folder_dt.replace(tzinfo=timezone.utc)
+                    except ValueError:
+                        continue
+                    if folder_dt < cutoff:
+                        if self._delete_drive_file(f["id"], token):
+                            deleted += 1
+                            logger.info(f"☁️ [Google Drive] Retention: deleted expired folder '{name}'")
+
+                page_token = data.get("nextPageToken")
+                if not page_token:
+                    break
+
+        except Exception as e:
+            logger.exception(f"Google Drive cleanup failed: {e}")
+
+        if deleted:
+            logger.info(f"☁️ [Google Drive] Retention: deleted {deleted} expired event folder(s).")
+        return deleted
+
+    def _delete_drive_file(self, file_id: str, token: str) -> bool:
+        """Deletes (permanently removes) a Google Drive file/folder by ID."""
+        try:
+            res = requests.delete(
+                f"{self.DRIVE_FILES_URL}/{file_id}",
+                headers={"Authorization": f"Bearer {token}"},
+                params={"supportsAllDrives": "true"},
+                timeout=15.0
+            )
+            if res.status_code in (200, 204):
+                return True
+            logger.error(f"Google Drive delete failed ({res.status_code}): {res.text}")
+            return False
+        except Exception as e:
+            logger.error(f"Google Drive delete error: {e}")
+            return False
+
     def _get_valid_token(self) -> Optional[str]:
         """Obtains or refreshes OAuth2 token using User OAuth or Service Account credentials."""
         with self._lock:

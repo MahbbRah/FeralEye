@@ -5,6 +5,7 @@ import logging
 import subprocess
 import threading
 from typing import Optional, Tuple
+from collections import deque
 import numpy as np
 
 from camera.base import BaseStreamReader
@@ -27,6 +28,7 @@ class FFmpegRTSPStream(BaseStreamReader):
         output_height: int = 720,
         reconnect_initial_delay_sec: float = 2.0,
         reconnect_max_delay_sec: float = 30.0,
+        pre_buffer_max_frames: int = 300,
     ):
         self.rtsp_url = rtsp_url
         self.target_fps = target_fps
@@ -46,6 +48,8 @@ class FFmpegRTSPStream(BaseStreamReader):
         self._latest_frame: Optional[np.ndarray] = None
         self._frame_timestamp: float = 0.0
         self._last_retrieved_timestamp: float = 0.0
+        # Rolling pre-buffer so event clips can include pre-detection footage.
+        self._pre_buffer = deque(maxlen=pre_buffer_max_frames)
 
     def start(self) -> None:
         if self._running:
@@ -68,6 +72,7 @@ class FFmpegRTSPStream(BaseStreamReader):
         self._connected = False
         with self._lock:
             self._latest_frame = None
+            self._pre_buffer.clear()
         logger.info("FFmpeg stream reader stopped.")
 
     def get_latest_frame(self) -> Tuple[bool, Optional[np.ndarray]]:
@@ -79,6 +84,15 @@ class FFmpegRTSPStream(BaseStreamReader):
                 return True, self._latest_frame.copy()
             else:
                 return False, None
+
+    def get_recent_frames(self, duration_sec: float = 10.0):
+        """
+        Extracts all frames stored in the pre-buffer from the last `duration_sec` seconds.
+        Returns a list of (timestamp, frame_array).
+        """
+        cutoff = time.time() - duration_sec
+        with self._lock:
+            return [(ts, f.copy()) for ts, f in self._pre_buffer if ts >= cutoff]
 
     @property
     def is_connected(self) -> bool:
@@ -131,6 +145,7 @@ class FFmpegRTSPStream(BaseStreamReader):
                     with self._lock:
                         self._latest_frame = frame
                         self._frame_timestamp = now
+                        self._pre_buffer.append((now, frame))
 
             except Exception as e:
                 logger.error(f"FFmpeg error: {e}")
