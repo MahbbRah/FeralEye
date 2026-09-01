@@ -191,9 +191,11 @@ FeralEye/
 
 ## 📱 Running on Android (via Termux) as a 24/7 Dedicated Server
 
-An old or cracked-screen Android phone (4GB+ RAM) makes an incredible, low-power ($< 1\text{W}$), battery-backed 24/7 detection appliance.
+An old or cracked-screen Android phone (4GB+ RAM) makes an incredible, low-power ($< 1.5\text{W}$), battery-backed 24/7 detection appliance.
 
-### 1. Initial Setup in Termux
+> 📖 **Full Installation & Troubleshooting Manual**: For the complete deep-dive setup guide, common Android error solutions, and mobile tuning tips, check out our **[Android 24/7 Deployment Guide (ANDROID_SETUP_GUIDE.md)](./ANDROID_SETUP_GUIDE.md)**.
+
+### Quick Setup Summary:
 1. Install **Termux** from [F-Droid](https://f-droid.org/packages/com.termux/) (do not use Google Play build).
 2. Install pre-compiled packages & OpenSSH:
    ```bash
