@@ -59,6 +59,14 @@ class YOLODetector:
         }
         logger.info(f"Mapped target classes {self.target_classes} -> COCO class IDs: {self.target_class_ids}")
 
+        # Class-specific confidence thresholds (e.g. higher for person to avoid chicken false positives)
+        self.class_thresholds = {
+            "person": 0.55,
+            "human": 0.55,
+            "cat": self.confidence_threshold,
+            "dog": self.confidence_threshold,
+        }
+
     def _select_device(self) -> str:
         """Selects the best available hardware acceleration device and optimizes CPU threads."""
         if torch.cuda.is_available():
@@ -88,10 +96,11 @@ class YOLODetector:
         timestamp = datetime.now()
         t0 = time.perf_counter()
 
-        # Run inference
+        # Run inference with lowest base threshold to capture all candidate boxes
+        min_conf = min(self.confidence_threshold, 0.20)
         results = self.model.predict(
             source=frame,
-            conf=self.confidence_threshold,
+            conf=min_conf,
             classes=list(self.target_class_ids) if self.target_class_ids else None,
             imgsz=self.imgsz,
             device=self._device,
@@ -106,9 +115,12 @@ class YOLODetector:
             for box in boxes:
                 cls_id = int(box.cls[0].item())
                 conf = float(box.conf[0].item())
-                class_name = self.class_names.get(cls_id, f"class_{cls_id}")
+                class_name = self.class_names.get(cls_id, f"class_{cls_id}").lower()
 
-                if conf >= self.confidence_threshold:
+                # Get class-specific threshold (fallback to default)
+                required_conf = self.class_thresholds.get(class_name, self.confidence_threshold)
+
+                if conf >= required_conf:
                     x1, y1, x2, y2 = box.xyxy[0].tolist()
                     detections.append(
                         Detection(
