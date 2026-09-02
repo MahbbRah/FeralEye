@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>FeralEye: How it works</title>
+<style>
+  :root {
+    --bg: #f6faf5;
+    --ink: #16281d;
+    --ink-soft: #45604f;
+    --pine: #1c6b4a;
+    --pine-deep: #0f3d2a;
+    --pine-tint: #e6f1e9;
+    --pine-line: #d9e7db;
+    --amber: #b45309;
+    --amber-tint: #fdf1e3;
+    --amber-line: #f3ddb8;
+    --card: #ffffff;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1800px; height: 1100px; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background:
+      radial-gradient(900px 500px at 85% -10%, rgba(28,107,74,0.07), transparent 60%),
+      radial-gradient(700px 400px at 0% 110%, rgba(180,83,9,0.05), transparent 55%),
+      var(--bg);
+    color: var(--ink);
+    display: flex;
+    flex-direction: column;
+    padding: 44px 56px 0;
+  }
+
+  /* ---------- Header ---------- */
+  .eyebrow {
+    font-size: 14px; font-weight: 700; letter-spacing: 0.14em;
+    color: var(--pine); text-transform: uppercase; margin-bottom: 10px;
+  }
+  h1 { font-size: 46px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.12; max-width: 1480px; }
+  h1 .accent { color: var(--pine); }
+  .subtitle { margin-top: 10px; font-size: 21px; color: var(--ink-soft); line-height: 1.4; }
+
+  /* ---------- Flow ---------- */
+  .flow { display: flex; align-items: stretch; gap: 0; margin-top: 30px; }
+  .stage {
+    flex: 1; background: var(--card); border: 1px solid var(--pine-line);
+    border-radius: 18px; padding: 26px 28px 24px;
+    box-shadow: 0 1px 2px rgba(22,40,29,0.05), 0 14px 34px rgba(22,40,29,0.07);
+    display: flex; flex-direction: column;
+  }
+  .stage.hot { border-color: var(--amber-line); background: linear-gradient(180deg, #fffdf9, var(--amber-tint)); }
+  .stage-top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .step {
+    width: 30px; height: 30px; border-radius: 999px; background: var(--pine); color: #fff;
+    font-size: 15px; font-weight: 800; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .stage.hot .step { background: var(--amber); }
+  .stage-label { font-size: 13px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft); }
+  .icon { font-size: 44px; line-height: 1; margin-bottom: 12px; }
+  .stage h2 { font-size: 26px; font-weight: 800; letter-spacing: -0.01em; margin-bottom: 8px; }
+  .stage p { font-size: 17.5px; line-height: 1.5; color: var(--ink-soft); margin-bottom: 16px; }
+  .stage p strong { color: var(--ink); font-weight: 700; }
+  .chip {
+    display: inline-block; margin-top: auto; align-self: flex-start; padding: 6px 12px; border-radius: 999px;
+    font-size: 13.5px; font-weight: 700; background: var(--pine-tint); color: var(--pine-deep);
+  }
+  .stage.hot .chip { background: #fbe8cf; color: var(--amber); }
+  .arrow {
+    width: 64px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .arrow span {
+    width: 38px; height: 38px; border-radius: 999px; background: var(--pine); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800;
+    box-shadow: 0 6px 14px rgba(15,61,42,0.25);
+  }
+
+  /* ---------- Evidence strip ---------- */
+  .evidence {
+    margin-top: 26px; background: var(--card); border: 1px solid var(--pine-line);
+    border-radius: 18px; padding: 20px 28px; display: flex; align-items: center; gap: 22px;
+    box-shadow: 0 1px 2px rgba(22,40,29,0.05), 0 10px 26px rgba(22,40,29,0.06);
+  }
+  .evidence .lead { display: flex; align-items: center; gap: 14px; flex-shrink: 0; width: 380px; }
+  .evidence .lead .icon { font-size: 34px; margin: 0; }
+  .evidence .lead h3 { font-size: 21px; font-weight: 800; line-height: 1.25; }
+  .evidence .lead p { font-size: 15px; color: var(--ink-soft); margin-top: 2px; }
+  .mini-flow { display: flex; align-items: center; gap: 10px; flex: 1; }
+  .mini {
+    flex: 1; background: var(--pine-tint); border-radius: 12px; padding: 12px 16px;
+  }
+  .mini b { display: block; font-size: 16px; font-weight: 800; color: var(--pine-deep); }
+  .mini span { font-size: 13.5px; color: var(--ink-soft); line-height: 1.35; display: block; margin-top: 3px; }
+  .mini-arrow { color: var(--pine); font-size: 20px; font-weight: 800; flex-shrink: 0; }
+
+  /* ---------- Benefits ---------- */
+  .benefits { margin-top: 26px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .benefit {
+    background: var(--card); border: 1px solid var(--pine-line); border-radius: 16px;
+    padding: 18px 22px; display: flex; gap: 16px; align-items: flex-start;
+  }
+  .benefit .b-icon {
+    width: 46px; height: 46px; border-radius: 13px; background: var(--pine-tint);
+    display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0;
+  }
+  .benefit h3 { font-size: 18.5px; font-weight: 800; margin-bottom: 4px; }
+  .benefit p { font-size: 15px; line-height: 1.45; color: var(--ink-soft); }
+
+  /* ---------- Footer ---------- */
+  .footer {
+    margin: 26px -56px 0; background: var(--pine-deep); color: #eaf4ec;
+    display: flex; align-items: center; justify-content: center; gap: 56px;
+    height: 76px; font-size: 17px; font-weight: 600;
+  }
+  .footer .dot { width: 5px; height: 5px; border-radius: 999px; background: rgba(234,244,236,0.45); }
+  .footer b { color: #ffffff; font-weight: 800; }
+</style>
+</head>
+<body>
+
+  <header>
+    <div class="eyebrow">How FeralEye works</div>
+    <h1>A 24/7 guardian, built from <span class="accent">the camera you already own</span><br>and a phone you no longer use</h1>
+    <div class="subtitle">FeralEye watches your pen, coop, garden, or gate around the clock, thinks locally, and tells your phone the moment something matters.</div>
+  </header>
+
+  <section class="flow">
+    <div class="stage">
+      <div class="stage-top"><div class="step">1</div><div class="stage-label">See</div></div>
+      <div class="icon">📷</div>
+      <h2>Your camera keeps watch</h2>
+      <p>Any standard IP camera feeds a live picture into the system. <strong>No new cameras, no rewiring.</strong> It observes quietly, sampling once per second.</p>
+      <span class="chip">Works with the gear you have</span>
+    </div>
+    <div class="arrow"><span>→</span></div>
+    <div class="stage">
+      <div class="stage-top"><div class="step">2</div><div class="stage-label">Think</div></div>
+      <div class="icon">🧠</div>
+      <h2>A spare phone does the brainwork</h2>
+      <p>The AI runs <strong>on an old Android phone at your home</strong>, not in someone else's data center. It looks for cats, dogs, and people, and gives every sighting a second look before trusting it.</p>
+      <span class="chip">Video never leaves your network</span>
+    </div>
+    <div class="arrow"><span>→</span></div>
+    <div class="stage hot">
+      <div class="stage-top"><div class="step">3</div><div class="stage-label">Act</div></div>
+      <div class="icon">📲</div>
+      <h2>Your phone tells you first</h2>
+      <p>A push notification arrives <strong>in under a second</strong>, with an annotated photo of exactly what was seen and how sure the system is.</p>
+      <span class="chip">Alert to pocket in &lt; 1 second</span>
+    </div>
+  </section>
+
+  <section class="evidence">
+    <div class="lead">
+      <div class="icon">🎬</div>
+      <div>
+        <h3>Nothing gets lost</h3>
+        <p>Every confirmed visit is recorded as proof.</p>
+      </div>
+    </div>
+    <div class="mini-flow">
+      <div class="mini"><b>Evidence photo</b><span>annotated with boxes and timestamps</span></div>
+      <div class="mini-arrow">→</div>
+      <div class="mini"><b>20-second clip</b><span>starts 10 s before the alert</span></div>
+      <div class="mini-arrow">→</div>
+      <div class="mini"><b>Google Drive backup</b><span>one neat folder per event</span></div>
+      <div class="mini-arrow">→</div>
+      <div class="mini"><b>Automatic cleanup</b><span>old evidence deletes itself</span></div>
+    </div>
+  </section>
+
+  <section class="benefits">
+    <div class="benefit">
+      <div class="b-icon">🔒</div>
+      <div><h3>Private by design</h3><p>The AI runs where the camera is. Your footage is analyzed at home and stays yours.</p></div>
+    </div>
+    <div class="benefit">
+      <div class="b-icon">💸</div>
+      <div><h3>Zero monthly fees</h3><p>No subscription and no cloud AI bill. The brain is hardware you already owned.</p></div>
+    </div>
+    <div class="benefit">
+      <div class="b-icon">🎯</div>
+      <div><h3>Fewer false alarms</h3><p>A sighting must be reconfirmed within a 4-second window before any alert is sent.</p></div>
+    </div>
+    <div class="benefit">
+      <div class="b-icon">⏱️</div>
+      <div><h3>Catches the buildup</h3><p>Clips begin 10 seconds before the alert, showing how the visitor arrived, not just the ending.</p></div>
+    </div>
+    <div class="benefit">
+      <div class="b-icon">♻️</div>
+      <div><h3>Gives old hardware a job</h3><p>A retired Android phone becomes a dedicated guard that runs day and night.</p></div>
+    </div>
+    <div class="benefit">
+      <div class="b-icon">🌙</div>
+      <div><h3>Quiet by default</h3><p>Samples once per second, sips power, and only speaks when something real happens.</p></div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <span>Alert in <b>under 1 second</b></span><div class="dot"></div>
+    <span><b>20-second</b> evidence clips</span><div class="dot"></div>
+    <span><b>10 s</b> of pre-event footage</span><div class="dot"></div>
+    <span><b>60-day</b> cloud history</span><div class="dot"></div>
+    <span>Runs on <b>pennies of power</b></span>
+  </footer>
+
+</body>
+</html>

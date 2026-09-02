@@ -2,6 +2,8 @@
 
 **FeralEye** is a lightweight, edge-optimized, always-running predator detection system designed for IP cameras (V380/ONVIF/RTSP). It continuously monitors sensitive areas (e.g., poultry pens, gardens, livestock) using state-of-the-art YOLO vision models without requiring cloud services, proprietary apps, or recurring subscriptions.
 
+![How FeralEye works](docs/architecture.png)
+
 ---
 
 ## ✨ Features
