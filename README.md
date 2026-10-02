@@ -205,7 +205,8 @@ FeralEye is engineered to run seamlessly on low-power devices:
 - **Raspberry Pi & SBCs**: Runs on Linux ARM64 Single Board Computers.
 - **macOS / Linux / Windows Servers**: Full hardware acceleration on Apple Silicon (MPS) and NVIDIA GPUs (CUDA).
 
-👉 **For the complete step-by-step Android installation, performance configuration, and troubleshooting guide, see [ANDROID_SETUP_GUIDE.md](./ANDROID_SETUP_GUIDE.md)**.
+👉 **For phone deployments, see [ANDROID_SETUP_GUIDE.md](./ANDROID_SETUP_GUIDE.md)**.
+👉 **For 2GB RAM TV Box deployments (Android TV / Armbian), see [TV_BOX_SETUP_GUIDE.md](./TV_BOX_SETUP_GUIDE.md)**.
 
 ---
 
